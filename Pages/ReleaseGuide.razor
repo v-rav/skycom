@@ -1,0 +1,733 @@
+﻿<!--
+//=============================================================================
+// ReleaseGuide
+// リリース案内画面の表示設定
+//
+// Copyright (C) SKYCOM Corporation
+// EandM
+//=============================================================================
+-->
+
+@page "/ReleaseGuide"
+@using Microsoft.Extensions.Options
+@using Radzen.Blazor
+@using Services
+@using SKYCOM.DLManagement.Data
+@using SKYCOM.DLManagement.Entity
+@using SKYCOM.DLManagement.Util
+@using System.IO
+@using System.Collections.Generic
+@using System.ComponentModel;
+@using System.Runtime.CompilerServices;
+
+@inject Message _message
+@inject IOptions<Settings> _settings
+@inject ReleaseGuideService _service
+@inject Blazored.LocalStorage.ILocalStorageService localStorage
+
+<h1>@_message.MessageList["ReleaseInformation"]</h1>
+
+<br>
+
+<div id="ReleaseBody">
+
+    <table>
+        @foreach (var productInfo in productInfos.Select((p, i) => new { Value = p, Index = i }))
+        {
+            <tr>
+                @if (productInfo.Index == 0)
+                {
+                    <th width="180" rowspan="@productInfos.Count">@_message.MessageList["ProductChoice"]</th>
+                }
+                <td width="50"><button class="@fileSelectClass" @onclick="@(e => SelectProductFile(productInfo.Value))">@_message.MessageList["FileChoice"]</button></td>
+                <td>@productInfo.Value.FileName</td>
+            </tr>
+        }
+        <tr>
+            <th></th>
+            <td>
+                @if (addClass == ADD_CLASS)
+                {
+                    <button class="@addClass" @onclick="AddFileSelect">＋</button>
+                }
+                else
+                {
+                    <div class="@addClass" style="margin-top: -5px;">＋</div>
+                }
+                @if (delClass == DEL_CLASS)
+                {
+                    <button class="@delClass" @onclick="DeleteFileSelect">－</button>
+                }
+                else
+                {
+                    <div class="@delClass" style="margin-top: -5px;">－</div>
+                }
+            </td>
+        </tr>
+        <tr>
+            <th>@_message.MessageList["Title"]</th>
+            <td colspan="2"><input class="subject" @bind="SubjectValue" /></td>
+        </tr>
+        <tr>
+            <th>@_message.MessageList["MailText"]</th>
+            <td colspan="2"><textarea name="LetterTrans" rows="4" cols="30" @bind="LetterOfTtransmittalValue"></textarea></td>
+        </tr>
+        <tr>
+            <th>@_message.MessageList["CSVFile"]</th>
+            <td><button class="@fileSelectClass" @onclick="SelectCsvFile">@_message.MessageList["FileChoice"]</button></td>
+            <td>@csvFileName</td>
+        </tr>
+        <tr>
+            <th>@_message.MessageList["Sign"]</th>
+            <td colspan="2"><textarea name="LetterTrans" rows="3" cols="30" @bind="SignatureValue"></textarea></td>
+        </tr>
+        <tr>
+            <th>@_message.MessageList["MyMailAddress"]</th>
+            <td colspan="2"><input @bind="sendFromAddressValue" maxlength="254" readonly="readonly" /></td>
+        </tr>
+        <tr>
+            <th rowspan="2">@_message.MessageList["SendTime"]</th>
+            <td class="mailSel" colspan="2"><input type="checkbox" name="yoyaku" @bind="reserveValue" />@_message.MessageList["MailReservation"]</td>
+        </tr>
+        @if (reserveValue)
+        {
+            <tr>
+                <td colspan="2"><RadzenDatePicker TValue="DateTime?" ShowTime="true" ShowSeconds="true" HoursStep="1.0" MinutesStep="1" SecondsStep="1" DateFormat="yyyy/MM/dd HH:mm:ss" Change="Change" /></td>
+            </tr>
+        }
+    </table>
+
+    <br>
+
+    <div class="dlButton">
+        @if (dlURLClass == MIDDLE_CLASS)
+        {
+            <button class="@dlURLClass" @onclick="CreateDownloadURL">@_message.MessageList["CreateDownloadURL"]</button>
+        }
+        else
+        {
+            <div class="@dlURLClass" style="margin-top: -5px;">@_message.MessageList["CreateDownloadURL"]</div>
+        }
+    </div>
+
+    @if (downloadUrls != null)
+    {
+        <div class="DownloadTable">
+            <table border="1">
+                @foreach (var downloadUrl in downloadUrls)
+                {
+                <tr>
+                    <td style="padding-left: 5px; padding-right: 5px">@downloadUrl.NegotiationName</td>
+                    <td style="padding-left: 5px; padding-right: 5px">@downloadUrl.CustomerName</td>
+                    <td style="padding-left: 5px; padding-right: 5px">@downloadUrl.MailAddress</td>
+                    <td style="padding-left: 5px; padding-right: 5px">@downloadUrl.ProductName</td>
+                    <td style="padding-left: 5px; padding-right: 5px"><a href="@downloadUrl.Urlstr" target="_blank" rel="noopener noreferrer">@downloadUrl.Urlstr</a></td>
+                </tr>
+                }
+            </table>
+        </div>
+    }
+
+    <hr color="green" width="100%">
+    <br>
+</div>
+<div class="button_area">
+    <button class="btn btn-primary" style="width:140px;height:35px" @onclick="ShowMailContent">@_message.MessageList["CheckContents"]</button>
+    @if (sendClass == PRIMARY_CLASS)
+    {
+        <button class="@sendClass" style="width:140px;height:35px" @onclick="SendMail">@_message.MessageList["Send"]</button>
+    }
+    else
+    {
+        <div class="@sendClass" style="width:140px;height:35px;margin-top:-5px;">@_message.MessageList["Send"]</div>
+    }
+    <button class="btn btn-primary" style="width:140px;height:35px" @onclick="Clear">@_message.MessageList["Clear"]</button>
+</div>
+
+<SKYCOM.DLManagement.Pages.DlgMailContent @ref="ContentConfirmation"></SKYCOM.DLManagement.Pages.DlgMailContent>
+@code {
+    private SKYCOM.DLManagement.Pages.DlgMailContent ContentConfirmation { get; set; }
+}
+<SKYCOM.DLManagement.Pages.DlgSelectFile @ref="FileSelect"></SKYCOM.DLManagement.Pages.DlgSelectFile>
+@code {
+    private SKYCOM.DLManagement.Pages.DlgSelectFile FileSelect { get; set; }
+}
+<SKYCOM.DLManagement.Pages.DlgProgress @ref="Sending"></SKYCOM.DLManagement.Pages.DlgProgress>
+@code {
+    private DLManagement.Pages.DlgProgress Sending { get; set; }
+}
+<SKYCOM.DLManagement.Pages.DlgError @ref="ErrorDisp"></SKYCOM.DLManagement.Pages.DlgError>
+@code {
+    private SKYCOM.DLManagement.Pages.DlgError ErrorDisp { get; set; }
+}
+<SKYCOM.DLManagement.Pages.DlgNotice @ref="Notice"></SKYCOM.DLManagement.Pages.DlgNotice>
+@code {
+    private SKYCOM.DLManagement.Pages.DlgNotice Notice { get; set; }
+}
+<SKYCOM.DLManagement.Pages.DlgConfirm @ref="Confirm"></SKYCOM.DLManagement.Pages.DlgConfirm>
+@code {
+    private DlgConfirm Confirm { get; set; }
+}
+@code {
+    #region 画面項目
+    //予約日時
+    DateTime? reserveDateTime;
+
+    //予約送信チェックボックス
+    private bool _reserveValue = false;
+    public bool reserveValue
+    {
+        get
+        {
+            return _reserveValue;
+        }
+        set
+        {
+            if (_reserveValue == value)
+                return;
+            _reserveValue = value;
+            if (!value)
+                reserveDateTime = null;
+            OnPropertyChanged();
+        }
+    }
+    //CSVファイル名
+    private string _csvFileName = "";
+    public string csvFileName
+    {
+        get
+        {
+            return _csvFileName;
+        }
+        set
+        {
+            if (_csvFileName == value)
+                return;
+            _csvFileName = value;
+            OnPropertyChanged();
+        }
+    }
+    //選択された製品
+    private List<ProductInfo> _productInfos = new List<ProductInfo>();
+    public List<ProductInfo> productInfos
+    {
+        get
+        {
+            return _productInfos;
+        }
+        set
+        {
+            if (_productInfos == value)
+                return;
+            _productInfos = value;
+            OnPropertyChanged();
+        }
+    }
+    //件名
+    private string _subjectValue = "";
+    public string SubjectValue
+    {
+        get
+        {
+            return _subjectValue;
+        }
+        set
+        {
+            if (_subjectValue == value)
+                return;
+            _subjectValue = value;
+            OnPropertyChanged();
+        }
+    }
+    //送付状
+    private string _letterOfTtransmittalValue = "";
+    public string LetterOfTtransmittalValue
+    {
+        get
+        {
+            return _letterOfTtransmittalValue;
+        }
+        set
+        {
+            if (_letterOfTtransmittalValue == value)
+                return;
+            _letterOfTtransmittalValue = value;
+            OnPropertyChanged();
+        }
+    }
+    //署名
+    private string _signatureValue = "";
+    public string SignatureValue
+    {
+        get
+        {
+            return _signatureValue;
+        }
+        set
+        {
+            if (_signatureValue == value)
+                return;
+            _signatureValue = value;
+            OnPropertyChanged();
+        }
+    }
+    //送付元メールアドレス
+    private string sendFromAddressValue = "";
+    #endregion
+    //デフォルトテンプレートの内容
+    private string defaultTemplate = "";
+    //表示するファイル名とURL
+    private string confirmationDisplay = "";
+    //解析したCSVファイルデータ
+    private List<User> csvlists = null;
+    //ダウンロードURL一覧
+    private List<DownloadUrl> downloadUrls = null;
+    //ファイル選択ボタンの活性状態
+    private string fileSelectClass = MIDDLE_CLASS;
+    //ファイル選択の+/-ボタンの活性状態
+    private string addClass = ADD_CLASS;
+    private string delClass = DEL_CLASS;
+    //ダウンロードURL作成ボタンの活性状態
+    private string dlURLClass = MIDDLE_DISABLED_CLASS;
+    //送信ボタンの活性状態
+    private string sendClass = PRIMARY_CLASS;
+
+    private const string MIDDLE_CLASS = "btn btn-primary btn-middle";
+    private const string MIDDLE_DISABLED_CLASS = "btn btn-disabled btn-middle";
+    private const string PRIMARY_CLASS = "btn btn-primary";
+    private const string DISABLED_CLASS = "btn btn-disabled";
+    private const string ADD_CLASS = "btn btn-primary btn-add";
+    private const string ADD_DISABLED_CLASS = "btn btn-disabled btn-add";
+    private const string DEL_CLASS = "btn btn-primary btn-del";
+    private const string DEL_DISABLED_CLASS = "btn btn-disabled btn-del";
+
+    /// <summary>
+    /// 初期化処理
+    /// </summary>
+    protected override async void OnInitialized()
+    {
+        LogUtil.Instance.Trace("start");
+        //デフォルトテンプレートの読み込み
+        defaultTemplate = await _service.InitMailText();
+        //フィールドの初期化
+        InitiallVariable();
+        LogUtil.Instance.Trace("end");
+    }
+
+
+    /// <summary>
+    /// 各フィールドの初期化
+    /// </summary>
+    private void InitiallVariable()
+    {
+        LogUtil.Instance.Trace("start");
+        try
+        {
+            //変数の初期化
+            _letterOfTtransmittalValue = defaultTemplate;
+            reserveValue = false;
+            reserveDateTime = null;
+            //CSVファイル名
+            csvFileName = "";
+            //ファイル選択数初期値は１個
+            productInfos.Clear();
+            productInfos.Add(new ProductInfo());
+
+            _subjectValue = string.Format(_message.MessageList["SkycomReleaseInfomation"], string.Join(", ", productInfos.Select(x => x.ProductName).ToList()));
+
+            //署名
+            _signatureValue = _settings.Value.ReleaseGuide.SignatureValue;
+            //送付元メールアドレス
+            sendFromAddressValue = _settings.Value.ReleaseGuide.SendFromAddressValue;
+            //表示するファイル名とURL
+            confirmationDisplay = "";
+            //初期化時にCSV情報削除は必要
+            csvlists = null;
+            downloadUrls = null;
+            fileSelectClass = MIDDLE_CLASS;
+            addClass = ADD_CLASS;
+            delClass = DEL_DISABLED_CLASS;
+            dlURLClass = MIDDLE_DISABLED_CLASS;
+            sendClass = DISABLED_CLASS;
+
+        }
+        finally
+        {
+            LogUtil.Instance.Trace("end");
+        }
+    }
+
+    /// <summary>
+    /// レンダリング後イベント処理
+    /// </summary>
+    /// <param name="firstRender"></param>
+    /// <returns></returns>
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        LogUtil.Instance.Trace("start");
+        if (firstRender && localStorage != null && await localStorage.ContainKeyAsync("IsEdit"))
+        {
+            await localStorage.RemoveItemAsync("IsEdit");
+        }
+        LogUtil.Instance.Trace("end");
+    }
+
+    /// <summary>
+    /// 予約日時の変更
+    /// </summary>
+    /// <param name="value">変更日時</param>
+    void Change(DateTime? value)
+    {
+        LogUtil.Instance.Trace("start");
+        reserveDateTime = value;
+        StateHasChanged();
+        LogUtil.Instance.Trace("end");
+    }
+
+    /// <summary>
+    /// 内容確認ダイアログを表示
+    /// </summary>
+    void ShowMailContent()
+    {
+        LogUtil.Instance.Trace("start");
+        try
+        {
+            if (string.IsNullOrEmpty(SubjectValue) || string.IsNullOrEmpty(LetterOfTtransmittalValue))
+            {
+                LogUtil.Instance.Error(_message.MessageList["NotInputSubjectOrLetter"]);
+                ErrorDisp.Open(_message.MessageList["NotInputSubjectOrLetter"]);
+                return;
+            }
+
+            var letter = LetterOfTtransmittalValue;
+            foreach (var productInfo in productInfos.Select((p, i) => new { Value = p, Index = i }))
+            {
+                if (!string.IsNullOrEmpty(productInfo.Value.FileName))
+                {
+                    letter = letter.Replace($"%PRODUCT{productInfo.Index + 1}%", productInfo.Value.ProductName);
+                    letter = letter.Replace($"%VERSION{productInfo.Index + 1}%", productInfo.Value.Version);
+                    letter = letter.Replace($"%URL{productInfo.Index + 1}%", _message.MessageList["ConfirmURL"]);
+                }
+            }
+
+            confirmationDisplay = SubjectValue + "\n" + "\n" + letter + "\n" + "\n"
+                            + SignatureValue + "\n" + "\n";
+            ContentConfirmation.Open(confirmationDisplay);
+        }
+        finally
+        {
+            LogUtil.Instance.Trace("end");
+        }
+    }
+
+    /// <summary>
+    /// リリース案内を送信
+    /// </summary>
+    async void SendMail()
+    {
+        LogUtil.Instance.Trace("start");
+        try
+        {
+            if (sendClass == DISABLED_CLASS) return;
+            //予約日時の確認
+            if (reserveDateTime != null)
+            {
+                if (reserveDateTime < DateTime.Now)
+                {
+                    LogUtil.Instance.Error(_message.MessageList["ReservationTimeError"]);
+                    ErrorDisp.Open(_message.MessageList["ReservationTimeError"]);
+                    return;
+                }
+            }
+
+            //送信前確認ダイアログを表示
+            Confirm.Open(DlgConfirm.MODE.BeforeSend);
+            while (Confirm.Displayed)
+            {
+                await Task.Delay(1);
+            }
+            if (!Confirm.Result)
+            {
+                return;
+            }
+
+
+            //text=本文作成=送付状　+　署名
+            //downloadUrls(ダウンロードURL一覧)/予約時間/件名/本文/プロダクト総数
+            Sending.Open(_message.MessageList["MailSending"]);
+            await Task.Delay(500);
+            string text = LetterOfTtransmittalValue + "\n" + SignatureValue;
+            var result = await _service.SendMail(downloadUrls, reserveDateTime, SubjectValue, text, productInfos);
+            Sending.Close();
+            if (!result)
+            {
+                LogUtil.Instance.Error(_message.MessageList["SendFaild"]);
+                ErrorDisp.Open(_message.MessageList["SendFaild"]);
+                return;
+            }
+
+            if (reserveDateTime != null)
+            {
+                Notice.Open(_message.MessageList["ReserveSendCompated"]);
+            }
+            else
+            {
+                Notice.Open(_message.MessageList["SendCompated"]);
+
+            }
+            InitiallVariable();//初期化
+            if (localStorage != null && await localStorage.ContainKeyAsync("IsEdit"))
+            {
+                await localStorage.RemoveItemAsync("IsEdit");
+            }
+            StateHasChanged();
+        }
+        catch (MySql.Data.MySqlClient.MySqlException ex)
+        {
+            LogUtil.Instance.Error(_message.MessageList["NotConectionDB"], ex);
+            ErrorDisp.Open(_message.MessageList["NotConectionDB"]);
+        }
+        catch (InvalidOperationException ex)
+        {
+            LogUtil.Instance.Error(_message.MessageList["NotConectionDB"], ex);
+            ErrorDisp.Open(_message.MessageList["NotConectionDB"]);
+        }
+        finally
+        {
+            LogUtil.Instance.Trace("end");
+        }
+    }
+
+    /// <summary>
+    /// 内容をクリアする
+    /// </summary>
+    async void Clear()
+    {
+        LogUtil.Instance.Trace("start");
+        try
+        {
+            //クリア前確認ダイアログを表示
+            Confirm.Open(DlgConfirm.MODE.Clear);
+            while (Confirm.Displayed)
+            {
+                await Task.Delay(1);
+            }
+            if (!Confirm.Result)
+            {
+                return;
+            }
+            InitiallVariable();
+            StateHasChanged();
+        }
+        finally
+        {
+            LogUtil.Instance.Trace("end");
+        }
+    }
+
+    /// <summary>
+    /// ダウンロードURLの生成
+    /// </summary>
+    async void CreateDownloadURL()
+    {
+        LogUtil.Instance.Trace("start");
+        try
+        {
+            if (dlURLClass == MIDDLE_DISABLED_CLASS) return;
+            if (csvlists == null || csvlists.Count == 0)
+            {
+                LogUtil.Instance.Error(_message.MessageList["NoCSVFileSelecte"]);
+                ErrorDisp.Open(_message.MessageList["NoCSVFileSelecte"]);
+                return;
+            }
+            if (productInfos.Where(x => !string.IsNullOrEmpty(x.FileName)).ToList().Count == 0)
+            {
+                LogUtil.Instance.Error(_message.MessageList["NotChoiceProduct"]);
+                ErrorDisp.Open(_message.MessageList["NotChoiceProduct"]);
+                return;
+            }
+            if (string.IsNullOrEmpty(sendFromAddressValue))
+            {
+                LogUtil.Instance.Error(_message.MessageList["NotSetMyMealAddress"]);
+                ErrorDisp.Open(_message.MessageList["NotSetMyMealAddress"]);
+                return;
+            }
+            downloadUrls = await _service.CreateDownloadUrl(csvlists, productInfos, sendFromAddressValue);
+            if (downloadUrls == null || downloadUrls.Count == 0)
+            {
+                LogUtil.Instance.Error(_message.MessageList["CreateURLFailed"]);
+                ErrorDisp.Open(_message.MessageList["CreateURLFailed"]);
+                return;
+            }
+
+            fileSelectClass = MIDDLE_DISABLED_CLASS;
+            addClass = ADD_DISABLED_CLASS;
+            delClass = DEL_DISABLED_CLASS;
+            sendClass = PRIMARY_CLASS;
+            StateHasChanged();
+        }
+        catch (InvalidOperationException ex)
+        {
+            LogUtil.Instance.Error(_message.MessageList["NotConectionDB"], ex);
+            ErrorDisp.Open(_message.MessageList["NotConectionDB"]);
+        }
+        finally
+        {
+            LogUtil.Instance.Trace("end");
+        }
+    }
+
+    /// <summary>
+    /// 製品選択の+ボタン押下
+    /// </summary>
+    private void AddFileSelect()
+    {
+        LogUtil.Instance.Trace("start");
+        try
+        {
+            if (addClass == ADD_DISABLED_CLASS) return;
+            if (productInfos.Count < _settings.Value.ReleaseGuide.MaxFileSelectSize)
+            {
+                productInfos.Add(new ProductInfo());
+                addClass = productInfos.Count == _settings.Value.ReleaseGuide.MaxFileSelectSize ? ADD_DISABLED_CLASS : ADD_CLASS;
+                delClass = DEL_CLASS;
+                StateHasChanged();
+            }
+        }
+        finally
+        {
+            LogUtil.Instance.Trace("end");
+        }
+    }
+
+    /// <summary>
+    /// 製品選択の-ボタン押下
+    /// </summary>
+    private void DeleteFileSelect()
+    {
+        LogUtil.Instance.Trace("start");
+        try
+        {
+            if (delClass == DEL_DISABLED_CLASS) return;
+            if (productInfos.Count != 1)
+            {
+                productInfos.RemoveAt(productInfos.Count - 1);
+                addClass = ADD_CLASS;
+                delClass = productInfos.Count == 1 ? DEL_DISABLED_CLASS : DEL_CLASS;
+                dlURLClass = (productInfos.Where(x => !string.IsNullOrEmpty(x.FileName)).Count() >= 1 && csvlists != null) ? MIDDLE_CLASS : MIDDLE_DISABLED_CLASS;
+                SubjectValue = string.Format(_message.MessageList["SkycomReleaseInfomation"], string.Join(", ", productInfos.Select(x => x.ProductName).ToList()));
+                StateHasChanged();
+            }
+        }
+        finally
+        {
+            LogUtil.Instance.Trace("end");
+        }
+    }
+
+    /// <summary>
+    /// 製品選択のファイル選択ボタンを押下
+    /// </summary>
+    /// <param name="productInfo">製品情報</param>
+    private async void SelectProductFile(ProductInfo productInfo)
+    {
+        LogUtil.Instance.Trace("start");
+        try
+        {
+            if (fileSelectClass == MIDDLE_DISABLED_CLASS) return;
+            FileSelect.Open();
+            while (FileSelect.Displayed)
+            {
+                await Task.Delay(1);
+            }
+            if (!FileSelect.Result)
+            {
+                return;
+            }
+
+            productInfo.FileName = FileSelect.SelectFileName;
+            productInfo.ProductFilePath = FileSelect.SelectFileFullPath;
+            var verPath = Directory.GetParent(productInfo.ProductFilePath);
+            productInfo.ProductName = verPath.Parent.Name;
+            productInfo.Version = verPath.Name;
+
+            var template = await _service.SelectProduct(productInfo.ProductName);
+            if (!string.IsNullOrEmpty(template))
+            {
+                LogUtil.Instance.Debug($"A template associated with {productInfo.ProductName} has been found.");
+                LetterOfTtransmittalValue = template;
+            }
+            dlURLClass = (productInfos.Where(x => !string.IsNullOrEmpty(x.FileName)).Count() >= 1 && csvlists != null) ? MIDDLE_CLASS : MIDDLE_DISABLED_CLASS;
+            SubjectValue = string.Format(_message.MessageList["SkycomReleaseInfomation"], string.Join(", ", productInfos.Select(x => x.ProductName).ToList()));
+            StateHasChanged();
+        }
+        catch (MySql.Data.MySqlClient.MySqlException ex)
+        {
+            LogUtil.Instance.Error(_message.MessageList["NotConectionDB"], ex);
+            ErrorDisp.Open(_message.MessageList["NotConectionDB"]);
+        }
+        catch (InvalidOperationException ex)
+        {
+            LogUtil.Instance.Error(_message.MessageList["NotConectionDB"], ex);
+            ErrorDisp.Open(_message.MessageList["NotConectionDB"]);
+        }
+        finally
+        {
+            LogUtil.Instance.Trace("end");
+        }
+    }
+
+    /// <summary>
+    /// CSVファイルのファイル選択ボタン押下
+    /// </summary>
+    private async void SelectCsvFile()
+    {
+        LogUtil.Instance.Trace("start");
+        try
+        {
+            if (fileSelectClass == MIDDLE_DISABLED_CLASS) return;
+            //CSVファイル選択
+            FileSelect.Open();
+            while (FileSelect.Displayed)
+            {
+                await Task.Delay(1);
+            }
+            if (!FileSelect.Result)
+            {
+                return;
+            }
+
+            //CSVファイル解析
+            string message;
+            LogUtil.Instance.Debug($"Selected csv file is {FileSelect.SelectFileFullPath}.");
+            csvlists = await _service.SelectCsv(FileSelect.SelectFileFullPath, out message);
+            dlURLClass = (productInfos.Where(x => !string.IsNullOrEmpty(x.FileName)).Count() >= 1 && csvlists != null) ? MIDDLE_CLASS : MIDDLE_DISABLED_CLASS;
+            if (csvlists == null)
+            {
+                ErrorDisp.Open(message);
+                csvFileName = string.Empty;
+                StateHasChanged();
+                return;
+            }
+            csvFileName = FileSelect.SelectFileName;
+            StateHasChanged();
+        }
+        finally
+        {
+            LogUtil.Instance.Trace("end");
+        }
+    }
+
+    public event PropertyChangedEventHandler PropertyChanged;
+    /// <summary>
+    /// プロパティ変更イベント処理
+    /// </summary>
+    /// <param name="name"></param>
+    protected async void OnPropertyChanged([CallerMemberName] string name = null)
+    {
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+        await localStorage.SetItemAsync<bool>("IsEdit", true);
+        LogUtil.Instance.Trace($"OnPropertyChanged:{name}");
+    }
+}
+

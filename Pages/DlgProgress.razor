@@ -1,0 +1,64 @@
+﻿<!--
+//=============================================================================
+// DlgProgress
+// プログレスダイアログ表示
+//
+// Copyright (C) SKYCOM Corporation
+// EandM
+//=============================================================================
+-->
+
+@using System.Threading
+<div class="modal @modalClass" tabindex="-1" role="dialog" style="display:@modalDisplay">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-body">
+                <span><img border="0" src="../images/icon_loader_a_bb_01_s1.gif" style="margin-right:5px" />@message</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+@code {
+    private string message { get; set; }
+    private string modalDisplay = "none;";
+    private string modalClass = "";
+
+    /// <summary>
+    /// プログレスダイアログを表示する
+    /// </summary>
+    public async void Open(string message)
+    {
+        this.message = message;
+        modalDisplay = "block;";
+        modalClass = "Show";
+        if (Thread.CurrentThread.IsBackground)
+        {
+            await InvokeAsync(() => StateHasChanged());
+        }
+        else
+        {
+            StateHasChanged();
+        }
+    }
+
+    /// <summary>
+    /// プログレスダイアログを閉じる
+    /// </summary>
+    public async void Close()
+    {
+        modalDisplay = "none";
+        modalClass = "";
+        if (Thread.CurrentThread.IsBackground)
+        {
+            await InvokeAsync(() => StateHasChanged());
+        }
+        else
+        {
+            StateHasChanged();
+        }
+    }
+}
+

@@ -1,0 +1,99 @@
+﻿<!--
+//=============================================================================
+// NavMenu
+// ナビ画面の表示設定
+//
+// Copyright (C) SKYCOM Corporation
+// EandM
+//=============================================================================
+-->
+
+@using SKYCOM.DLManagement.Data
+@using SKYCOM.DLManagement.Pages
+@inject IJSRuntime JsRuntime
+@inject Message _message
+@inject NavigationManager _navmanager
+@inject Blazored.LocalStorage.ILocalStorageService localStorage
+
+<div class="@NavMenuCssClass" @onclick="ToggleNavMenu">
+    <ul class="nav flex-column">
+        <li class="nav-item px-3">
+            <a class="nav-link" href="" Match="NavLinkMatch.All" @onclick="@(s => NavCheck("/"))" @onclick:preventDefault>
+                <img border="0" src="../images/Home-Nav.png" height="45" width="35" style="margin-left: -10px" /> @_message.MessageList["MainMenu"]
+            </a>
+        </li>
+        <li class="nav-item px-3">
+            <a class="nav-link" href="" @onclick="@(s => NavCheck("FileManagement"))" @onclick:preventDefault>
+                <img border="0" src="../images/Form-Upload-02.png" height="35" width="35" style="margin-left: -10px" />@_message.MessageList["FileManagement"]
+            </a>
+        </li>
+        <li class="nav-item px-3">
+            <a class="nav-link" href="" @onclick="@(s => NavCheck("ReleaseGuide"))" @onclick:preventDefault>
+                <img border="0" src="../images/Mail.png" height="35" width="35" style="margin-left: -10px" />@_message.MessageList["ReleaseInformation"]
+            </a>
+        </li>
+        <li class="nav-item px-3">
+            <a class="nav-link" href="" @onclick="@(s => NavCheck("DLStatusManagement"))" @onclick:preventDefault>
+                <img border="0" src="../images/Form-Download-02.png" height="35" width="35" style="margin-left: -10px" />@_message.MessageList["DLStatusManagement"]
+            </a>
+        </li>
+    </ul>
+</div>
+<SKYCOM.DLManagement.Pages.DlgConfirm @ref="Confirm"></SKYCOM.DLManagement.Pages.DlgConfirm>
+@code {
+    private DlgConfirm Confirm { get; set; }
+}
+
+@code {
+    private bool collapseNavMenu = true;
+
+    private string NavMenuCssClass => collapseNavMenu ? "collapse" : null;
+
+    private void ToggleNavMenu()
+    {
+        collapseNavMenu = !collapseNavMenu;
+    }
+
+    /// <summary>
+    /// ページ遷移前チェック
+    /// </summary>
+    /// <param name="href">遷移先アドレス</param>
+    async void NavCheck(string href)
+    {
+        if (await localStorage.ContainKeyAsync("IsEdit"))
+        {
+            if (await localStorage.GetItemAsync<bool>("IsEdit"))
+            {
+                if (_navmanager.Uri.Contains(nameof(Pages.FileManagement)))
+                {
+                    Confirm.Open(DlgConfirm.MODE.UploadFileChoiced);
+                    while (Confirm.Displayed)
+                    {
+                        await Task.Delay(1);
+                    }
+
+                    if (!Confirm.Result)
+                    {
+                        return;
+                    }
+                }
+                else if (_navmanager.Uri.Contains(nameof(Pages.ReleaseGuide)))
+                {
+                    Confirm.Open(DlgConfirm.MODE.EditCancel);
+                    while (Confirm.Displayed)
+                    {
+                        await Task.Delay(1);
+                    }
+
+                    if (!Confirm.Result)
+                    {
+                        return;
+                    }
+                }
+            }
+            await localStorage.RemoveItemAsync("IsEdit");
+        }
+
+        _navmanager.NavigateTo(href);
+    }
+}
