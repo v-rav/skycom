@@ -113,7 +113,9 @@ namespace SKYCOM.DLManagement.AzureHelper
                 throw new Exception(string.Concat(Constants.BlobConstants.ConnectionFailedErrorMessage, ex.Message));
             }
         }
+        #endregion
 
+        #region
         /// <summary>
         /// Get Blob URL using managed identity and if its not accessible, get the sas token url to access the same.
         /// </summary>
@@ -228,8 +230,6 @@ namespace SKYCOM.DLManagement.AzureHelper
         /// <summary>
         /// Download blob content - using managed identity using memorystream.
         /// </summary>
-        /// <param name="blobName"></param>
-        /// <returns></returns>
         public static MemoryStream DownloadBlobToMemoryStream(string containerName, string blobName)
         {
             try {
@@ -251,13 +251,49 @@ namespace SKYCOM.DLManagement.AzureHelper
 
             return memoryStream;
         }
-            
             catch (Exception ex)
             {
                 throw new Exception(string.Concat(Constants.BlobConstants.ConnectionFailedErrorMessage, ex.Message));
             }
         }
 
+        /// <summary>
+        /// Gets blobclient of blobname.
+        /// </summary>
+        public static BlobClient GetBlobClient(string containerName, string blobName)
+        {
+            BlobContainerClient containerClient = GetBlobContainerClientUsingManagedIdentity(containerName);
+            return containerClient.GetBlobClient(blobName); // Return the BlobClient for the specified blob
+        }
+
+        /// <summary>
+        /// checks if blob exists or not.
+        /// </summary>
+        public static bool BlobExists(BlobClient blobClient)
+        {
+            return blobClient.Exists(); // Check if the blob exists synchronously
+        }
+
+        public static string DownloadBlobContent(BlobClient blobClient)
+        {
+            try
+            {
+                using (var memoryStream = new MemoryStream())
+                {
+                    blobClient.DownloadTo(memoryStream); // Download the blob to the memory stream
+                    memoryStream.Position = 0; // Reset the position to read from the beginning
+
+                    using (var reader = new StreamReader(memoryStream))
+                    {
+                        return reader.ReadToEnd(); // Return the content as a string
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new Exception(string.Concat(Constants.BlobConstants.ConnectionFailedErrorMessage, ex.Message));
+            }
+        }
         #endregion
     }
 }
