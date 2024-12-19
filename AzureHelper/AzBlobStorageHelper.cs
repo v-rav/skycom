@@ -220,7 +220,38 @@ namespace SKYCOM.DLManagement.AzureHelper
             catch (Exception ex) { throw new Exception("Blobstorage Helper - UploadFileToAzure Method : Some error while uploading the blob - ", ex); }
         }
 
+        /// <summary>
+        /// Download blob content - using managed identity using memorystream.
+        /// </summary>
+        /// <param name="blobName"></param>
+        /// <returns></returns>
+        public static MemoryStream DownloadBlobToMemoryStream(string containerName, string blobName)
+        {
+            try {
 
+            // Get a reference to the container
+             BlobContainerClient containerClient = GetBlobContainerClientUsingManagedIdentity(containerName);
+
+            // Get a reference to the blob (file)
+            BlobClient blobClient = containerClient.GetBlobClient(blobName);
+
+            // Create a MemoryStream to hold the downloaded content
+            MemoryStream memoryStream = new MemoryStream();
+
+            // Download the blob content into the memory stream
+            blobClient.DownloadTo(memoryStream);
+
+            // Reset the memory stream position to the beginning before using it
+            memoryStream.Position = 0;
+
+            return memoryStream;
+        }
+            
+            catch (Exception ex)
+            {
+                throw new Exception(string.Concat(Constants.BlobConstants.ConnectionFailedErrorMessage, ex.Message));
+            }
+        }
 
         #endregion
     }
