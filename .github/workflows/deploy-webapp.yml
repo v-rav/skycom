@@ -62,7 +62,7 @@ jobs:
         run: dotnet build ./DLManagement.csproj --configuration Release
 
       - name: Publish the app
-        run: dotnet publish --configuration Release --output ./publish
+        run: dotnet publish ./DLManagement.csproj --configuration Release --output ./publish
 
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v3
