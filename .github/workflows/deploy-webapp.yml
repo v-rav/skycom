@@ -56,12 +56,7 @@ jobs:
 
       - name: Publish Application
         run: dotnet publish ./DLManagement.csproj --configuration Release -o ${{env.DOTNET_ROOT}}/myapp
-
-      - name: Debug Publish Directory
-        run: |
-          echo "Publish directory content:"
-          ls -R ./publish
-
+     
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v3
         with:
