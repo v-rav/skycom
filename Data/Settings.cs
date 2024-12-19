@@ -21,6 +21,7 @@ namespace SKYCOM.DLManagement.Data
         public Csv Csv { get; set; }
         public List<string> CsIpAddress { get; set; }
         public int TransactionTimeout { get; set; }
+        public BlobSettings BlobSettings { get; set; }
     }
 
     public class ReleaseGuide
@@ -52,5 +53,13 @@ namespace SKYCOM.DLManagement.Data
     {
         public List<string> CsCsvExclusion { get; set; }
         public string CsvFileName { get; set; }
+    }
+
+    public class BlobSettings
+    {
+        public string StorageAccountName { get; set; }
+        public string GmailContainerName { get; set; }
+        public string LogContainerName { get; set; }
+        public string CommonContainerName { get; set; }
     }
 }
