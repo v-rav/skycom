@@ -14,6 +14,9 @@ using System.Globalization;
 using System.IO;
 using System.Reflection;
 using System.Xml;
+using SKYCOM.DLManagement.AzureHelper;
+using SKYCOM.DLManagement.Data;
+using Microsoft.Extensions.Options;
 
 namespace SKYCOM.DLManagement.Util
 {
@@ -23,7 +26,7 @@ namespace SKYCOM.DLManagement.Util
         private static readonly LogUtil _instance = new LogUtil();
 
         public static LogUtil Instance => _instance;
-
+        private readonly IOptions<Settings> _settings;
         private const string LOG_CONFIG_FILE = "log4net.config";
         private const string LOG_MESSAGE_FORMART = "{0}.{1} - {2}";
         private static readonly CultureInfo cultureInfo = CultureInfo.GetCultureInfo("ja-JP");
@@ -34,10 +37,23 @@ namespace SKYCOM.DLManagement.Util
         /// <summary>
         /// プライベートコンストラクタ
         /// </summary>
+       
+        public LogUtil(IOptions<Settings> settings)
+        {
+            _settings = settings;
+        }
         private LogUtil()
         {
+            #region existingcode
+            //log4netConfig.Load(File.OpenRead(LOG_CONFIG_FILE));
+            #endregion
+
+            #region CMF-Changes
+            MemoryStream memoryStream = AzBlobStorageHelper.DownloadBlobToMemoryStream(_settings.Value.BlobSettings.CommonContainerName, LOG_CONFIG_FILE);
             var log4netConfig = new XmlDocument();
-            log4netConfig.Load(File.OpenRead(LOG_CONFIG_FILE));
+            log4netConfig.Load(memoryStream);
+            #endregion
+
 
             var repo = LogManager.CreateRepository(
                 Assembly.GetEntryAssembly(), typeof(log4net.Repository.Hierarchy.Hierarchy));
