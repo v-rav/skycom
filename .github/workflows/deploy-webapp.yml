@@ -59,7 +59,7 @@ jobs:
           find . -type f
           
       - name: Build with dotnet
-        run: dotnet build skycom/DLManagement/DLManagement.csproj --configuration Release
+        run: dotnet build ./DLManagement.csproj --configuration Release
 
       - name: Publish the app
         run: dotnet publish --configuration Release --output ./publish
