@@ -1,0 +1,22 @@
+﻿<!--
+//=============================================================================
+// MainLayout
+// メインメニュー（右側）のヘッダー部とBody部の構成
+// 
+// Copyright (C) SKYCOM Corporation
+// EandM
+//=============================================================================
+-->
+
+@inherits LayoutComponentBase
+@using SKYCOM.DLManagement.Pages
+
+<div class="sidebar">
+    <NavMenu />
+</div>
+
+<div class="main">
+    <div class="content px-4">
+        @Body
+    </div>
+</div>

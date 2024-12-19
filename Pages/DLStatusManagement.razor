@@ -1,0 +1,66 @@
+﻿<!--
+//=============================================================================
+// DLStatusManagement
+// ダウンロード管理画面の表示設定
+// 
+// Copyright (C) SKYCOM Corporation
+// EandM
+//=============================================================================
+-->
+
+@page "/DLStatusManagement"
+@using SKYCOM.DLManagement.Services
+@using SKYCOM.DLManagement.Data
+@using SKYCOM.DLManagement.Util
+@inject IJSRuntime JSRuntime
+@inject Message _message
+@inject DLStatusManagementService _service
+
+<h1>@_message.MessageList["DLStatusManagement"]</h1>
+
+
+<br>
+<br>
+<h3>@_message.MessageList["CustomerDLStatusOutput"]</h3>
+<br>
+<button class="btn btn-primary btn-middle" @onclick="DownloadCsv">@_message.MessageList["DLStatusManagement"]</button>
+
+
+<SKYCOM.DLManagement.Pages.DlgError @ref="ErrorDisp"></SKYCOM.DLManagement.Pages.DlgError>
+@code {
+    private DLManagement.Pages.DlgError ErrorDisp { get; set; }
+}
+
+@code {
+    /// <summary>
+    /// DL状態管理CSVダウンロード
+    /// </summary>
+    private async void DownloadCsv()
+    {
+        LogUtil.Instance.Trace("start");
+        try
+        {
+            if (!await _service.CanCreateCsvAsync())
+            {
+                LogUtil.Instance.Error(_message.MessageList["TransmissionHistory"]);
+                ErrorDisp.Open(_message.MessageList["TransmissionHistory"]);
+                return;
+            }
+            await JSRuntime.InvokeVoidAsync("saveAsFile");
+        }
+        catch(MySql.Data.MySqlClient.MySqlException ex)
+        {
+            LogUtil.Instance.Error(_message.MessageList["NotConectionDB"], ex);
+            ErrorDisp.Open(_message.MessageList["NotConectionDB"]);
+        }
+        catch(InvalidOperationException ex)
+        {
+            LogUtil.Instance.Error(_message.MessageList["NotConectionDB"], ex);
+            ErrorDisp.Open(_message.MessageList["NotConectionDB"]);
+        }
+        finally
+        {
+            LogUtil.Instance.Trace("end");
+        }
+    }
+}

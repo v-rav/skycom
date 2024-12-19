@@ -1,0 +1,27 @@
+﻿<!--
+//=============================================================================
+// MainMenu
+// メインメニュー画面の表示設定
+// 
+// Copyright (C) SKYCOM Corporation
+// EandM
+//=============================================================================
+-->
+
+@page "/"
+@using SKYCOM.DLManagement.Data
+@inject Message _message
+
+<h1>@_message.MessageList["DownloadManagementSystem"]</h1>
+
+
+<br>
+<br>
+<div>
+
+    <h2>@_message.MessageList["MenuContents"]</h2>
+    <br />
+    <p>@_message.MessageList["ExplanatoryText1"]</p>
+    <p>@_message.MessageList["ExplanatoryText2"]</p>
+    <p>@_message.MessageList["ExplanatoryText3"]</p>
+</div>
