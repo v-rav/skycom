@@ -28,7 +28,7 @@ namespace SKYCOM.DLManagement.AzureHelper
                     throw new KeyNotFoundException(Constants.BlobConstants.StorageNameKeyNotfoundErrorMessage);
                 }
                 string blobServiceUri = $"https://{storageAccName}.blob.core.windows.net";
-                var credential = new ManagedIdentityCredential();
+                var credential = new DefaultAzureCredential();
 
                 BlobServiceClient blobServiceClient = new BlobServiceClient(new Uri(blobServiceUri), credential);
                 if (string.IsNullOrEmpty(containerName))
@@ -44,11 +44,11 @@ namespace SKYCOM.DLManagement.AzureHelper
         }
 
         /// <summary>
-        /// Generate the sas token to access the blob
+        /// Access blob with sas token to access the blob
         /// </summary>
         /// <param name="blobName"></param>
         /// <returns></returns>
-        private static string GenerateUrlWithSasToken(string blobName)
+        private static string AccessBlobWithSasTocken(string blobName)
         {
             //Second option
             var blobServiceClient = new BlobServiceClient(ConfigurationManager.AppSettings[Constants.BlobConstants.ConnectionString]);
@@ -92,7 +92,7 @@ namespace SKYCOM.DLManagement.AzureHelper
                 }
                 
                 #region CMF - Local Debugging
-                //return GenerateUrlWithSasToken(blobName); 
+                //return AccessBlobWithSasTocken(blobName); 
                 #endregion
 
             }
@@ -100,7 +100,7 @@ namespace SKYCOM.DLManagement.AzureHelper
             //Below lines will be uncommented for local testing
             //catch (RequestFailedException ex) when (ex.Status == 403)
             //{
-            //     return GenerateUrlWithSasToken(blobName); 
+            //     return AccessBlobWithSasTocken(blobName); 
             //}
             #endregion
             catch (Exception ex)
@@ -124,7 +124,7 @@ namespace SKYCOM.DLManagement.AzureHelper
                 return blobClient.Uri.ToString();  //This will be commented for local testing
 
                 #region CMF - Local Debugging
-                //return GenerateUrlWithSasToken(blobName); 
+                //return AccessBlobWithSasTocken(blobName); 
                 #endregion
 
             }
@@ -132,7 +132,7 @@ namespace SKYCOM.DLManagement.AzureHelper
             //Below lines will be uncommented for local testing
             //catch (RequestFailedException ex) when (ex.Status == 403)
             //{
-            //     return GenerateUrlWithSasToken(blobName); 
+            //     return AccessBlobWithSasTocken(blobName); 
             //}
             #endregion
             catch (Exception ex)
@@ -168,7 +168,7 @@ namespace SKYCOM.DLManagement.AzureHelper
                 //// Generate SAS tokens for all blobs in case of access failure - will remove this once managed identity works
                 //foreach (string blobName in blobNames)
                 //{                  
-                //    blobUrlMap[blobName] = GenerateUrlWithSasToken(blobName); ;
+                //    blobUrlMap[blobName] = AccessBlobWithSasTocken(blobName); ;
                 //}
                 #endregion
             }
@@ -178,7 +178,7 @@ namespace SKYCOM.DLManagement.AzureHelper
             //    // Generate SAS tokens for all blobs in case of access failure
             //    foreach (string blobName in blobNames)
             //    {
-            //        blobUrlMap[blobName] = GenerateUrlWithSasToken(blobName);
+            //        blobUrlMap[blobName] = AccessBlobWithSasTocken(blobName);
             //    }
             //}
             #endregion
