@@ -55,18 +55,19 @@ jobs:
         run: dotnet build ./DLManagement.csproj --configuration Release
 
       - name: Publish Application
-        run: dotnet publish ./DLManagement.csproj --configuration Release --output ./publish
+        run: dotnet publish ./DLManagement.csproj --configuration Release -o ${{env.DOTNET_ROOT}}/myapp
 
       - name: Debug Publish Directory
         run: |
           echo "Publish directory content:"
           ls -R ./publish
 
-      - name: Upload Artifact
+      - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v3
         with:
-          name: published-app
-          path: ./publish
+          name: .net-app
+          path: ${{env.DOTNET_ROOT}}/myapp
+
 
   deploy:
     permissions:
@@ -75,15 +76,10 @@ jobs:
     needs: build
 
     steps:
-      - name: Download Published Artifact
+      - name: Download artifact from build job
         uses: actions/download-artifact@v3
         with:
-          name: published-app
-
-      - name: Debug Artifact Directory
-        run: |
-          echo "Downloaded artifact directory content:"
-          ls -R .
+          name: .net-app
 
       - name: Deploy to Azure Web App
         id: deploy-to-webapp
@@ -91,5 +87,5 @@ jobs:
         with:
           app-name: ${{ env.AZURE_WEBAPP_NAME }}
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
-          package: ./skycom/published-app  # Update the package path to where the artifact is downloaded
+          package: ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
 
