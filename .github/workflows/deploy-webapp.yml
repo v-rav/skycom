@@ -83,7 +83,7 @@ jobs:
       - name: Debug Artifact Directory
         run: |
           echo "Downloaded artifact directory content:"
-          ls -R ./published-app
+          ls -R .
 
       - name: Deploy to Azure Web App
         id: deploy-to-webapp
@@ -91,5 +91,5 @@ jobs:
         with:
           app-name: ${{ env.AZURE_WEBAPP_NAME }}
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
-          package: ./published-app
+          package: ./skycom/published-app  # Update the package path to where the artifact is downloaded
 
