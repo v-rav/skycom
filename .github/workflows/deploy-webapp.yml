@@ -57,13 +57,12 @@ jobs:
 
       - name: Publish Application
         run: dotnet publish ./DLManagement.csproj --configuration Release -o ${{env.DOTNET_ROOT}}/myapp
-     
+
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v3
         with:
           name: .net-app
           path: ${{env.DOTNET_ROOT}}/myapp
-
 
   deploy:
     permissions:
@@ -77,11 +76,21 @@ jobs:
         with:
           name: .net-app
 
+      - name: Debug Artifact Directory
+        run: |
+          echo "Downloaded artifact directory content:"
+          ls -R ./myapp
+          echo "Current directory:"
+          pwd
+          echo "Directory content after downloading artifact:"
+          ls -R .
+
       - name: Deploy to Azure Web App
         id: deploy-to-webapp
         uses: azure/webapps-deploy@v2
         with:
           app-name: ${{ env.AZURE_WEBAPP_NAME }}
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
-          package: ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
+          package: ./myapp   # Ensure the correct path to the package is provided
+
 
