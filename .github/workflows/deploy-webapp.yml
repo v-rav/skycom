@@ -50,7 +50,14 @@ jobs:
           key: ${{ runner.os }}-nuget-${{ hashFiles('**/packages.lock.json') }}
           restore-keys: |
             ${{ runner.os }}-nuget-
-
+      
+      - name: Debug List repository structure
+        run: |
+          echo "Current directory:"
+          pwd
+          echo "Files in the repository:"
+          find . -type f
+          
       - name: Build with dotnet
         run: dotnet build skycom/DLManagement/DLManagement.csproj --configuration Release
 
