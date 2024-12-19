@@ -75,20 +75,25 @@ namespace SKYCOM.DLManagement.AzureHelper
         /// </summary>
         /// <param name="blobName"></param>
         /// <returns></returns>
-        public static FileStream DownloadBlobAsync(string blobName, string containerName, string destinationFilePath)
+        public static Stream DownloadBlobAsync(string blobName, string containerName)
         {
             try
             {
                 //Getting the blob url from azure blob storage using managed Identity
                 BlobContainerClient containerClient = GetBlobContainerClientUsingManagedIdentity(containerName);
+                if(!containerClient.Exists())
+                {
+                    throw new Exception($"AzBlobStorageHelper : DownloadblobAsync - Container not exists  { containerName}");
+                }
                 BlobClient blobClient = containerClient.GetBlobClient(blobName);
-
+                               
+                
                 // download blob content into filestream
                 // Download the blob to a file
-                using (FileStream fileStream = File.OpenWrite(destinationFilePath))
+                using (MemoryStream ms = new MemoryStream())
                 {
-                    blobClient.DownloadTo(fileStream);
-                    return fileStream;
+                    blobClient.DownloadTo(ms);
+                    return ms;
                 }
                 
                 #region CMF - Local Debugging
@@ -197,7 +202,7 @@ namespace SKYCOM.DLManagement.AzureHelper
         /// <param name="fileName"></param>
         /// <param name="containerName"></param>
         /// <exception cref="Exception"></exception>
-        public void UploadFileToAzure(byte[] fileData, string fileName, string containerName)
+        public static void UploadFileToAzure(Stream memoryStream, string fileName, string containerName)
         {
             try
             {               
@@ -211,9 +216,9 @@ namespace SKYCOM.DLManagement.AzureHelper
                 BlobClient blobClient = containerClient.GetBlobClient(fileName);
 
                 // Upload the file stream to Azure Blob Storage
-                using (var stream = new MemoryStream(fileData))
+                using (memoryStream)
                 {
-                    blobClient.Upload(stream, overwrite: true);
+                    blobClient.Upload(memoryStream, overwrite: true);
                 }
 
             }
