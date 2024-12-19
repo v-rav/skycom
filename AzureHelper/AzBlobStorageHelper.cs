@@ -113,7 +113,9 @@ namespace SKYCOM.DLManagement.AzureHelper
                 throw new Exception(string.Concat(Constants.BlobConstants.ConnectionFailedErrorMessage, ex.Message));
             }
         }
+        #endregion
 
+        #region
         /// <summary>
         /// Get Blob URL using managed identity and if its not accessible, get the sas token url to access the same.
         /// </summary>
@@ -225,8 +227,73 @@ namespace SKYCOM.DLManagement.AzureHelper
             catch (Exception ex) { throw new Exception("Blobstorage Helper - UploadFileToAzure Method : Some error while uploading the blob - ", ex); }
         }
 
+        /// <summary>
+        /// Download blob content - using managed identity using memorystream.
+        /// </summary>
+        public static MemoryStream DownloadBlobToMemoryStream(string containerName, string blobName)
+        {
+            try {
 
+            // Get a reference to the container
+             BlobContainerClient containerClient = GetBlobContainerClientUsingManagedIdentity(containerName);
 
+            // Get a reference to the blob (file)
+            BlobClient blobClient = containerClient.GetBlobClient(blobName);
+
+            // Create a MemoryStream to hold the downloaded content
+            MemoryStream memoryStream = new MemoryStream();
+
+            // Download the blob content into the memory stream
+            blobClient.DownloadTo(memoryStream);
+
+            // Reset the memory stream position to the beginning before using it
+            memoryStream.Position = 0;
+
+            return memoryStream;
+        }
+            catch (Exception ex)
+            {
+                throw new Exception(string.Concat(Constants.BlobConstants.ConnectionFailedErrorMessage, ex.Message));
+            }
+        }
+
+        /// <summary>
+        /// Gets blobclient of blobname.
+        /// </summary>
+        public static BlobClient GetBlobClient(string containerName, string blobName)
+        {
+            BlobContainerClient containerClient = GetBlobContainerClientUsingManagedIdentity(containerName);
+            return containerClient.GetBlobClient(blobName); // Return the BlobClient for the specified blob
+        }
+
+        /// <summary>
+        /// checks if blob exists or not.
+        /// </summary>
+        public static bool BlobExists(BlobClient blobClient)
+        {
+            return blobClient.Exists(); // Check if the blob exists synchronously
+        }
+
+        public static string DownloadBlobContent(BlobClient blobClient)
+        {
+            try
+            {
+                using (var memoryStream = new MemoryStream())
+                {
+                    blobClient.DownloadTo(memoryStream); // Download the blob to the memory stream
+                    memoryStream.Position = 0; // Reset the position to read from the beginning
+
+                    using (var reader = new StreamReader(memoryStream))
+                    {
+                        return reader.ReadToEnd(); // Return the content as a string
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new Exception(string.Concat(Constants.BlobConstants.ConnectionFailedErrorMessage, ex.Message));
+            }
+        }
         #endregion
     }
 }

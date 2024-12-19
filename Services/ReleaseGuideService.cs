@@ -22,6 +22,7 @@ using System.Linq;
 using System.Linq.Dynamic.Core;
 using System.Threading;
 using System.Threading.Tasks;
+using SKYCOM.DLManagement.AzureHelper;
 
 namespace SKYCOM.DLManagement.Services
 {
@@ -75,12 +76,27 @@ namespace SKYCOM.DLManagement.Services
                 }
                 if (templateList.Keys.Contains(defaultTemplate))
                 {
-                    if (!File.Exists(templateList[defaultTemplate]))
+                    #region CMF-Changes
+                    var blobClient = AzBlobStorageHelper.GetBlobClient(_settings.Value.BlobSettings.CommonContainerName, templateList[defaultTemplate]); // Get the BlobClient for the given blob
+
+                    // Check if the blob exists
+                    if (!AzBlobStorageHelper.BlobExists(blobClient))
                     {
                         LogUtil.Instance.Error(_message.MessageList["NonexistentFile"]);
-                        return Task.FromResult(string.Empty);
+                        return Task.FromResult(string.Empty); // Return empty if the blob does not exist
                     }
-                    return Task.FromResult(File.ReadAllText(templateList[defaultTemplate]));
+                    // Download and return the content of the blob
+                    return Task.FromResult(AzBlobStorageHelper.DownloadBlobContent(blobClient));
+                    #endregion
+
+                    #region existing changes
+                    //if (!File.Exists(templateList[defaultTemplate]))
+                    //{
+                    //    LogUtil.Instance.Error(_message.MessageList["NonexistentFile"]);
+                    //    return Task.FromResult(string.Empty);
+                    //}
+                    //return Task.FromResult(File.ReadAllText(templateList[defaultTemplate]));
+                    #endregion region
                 }
                 LogUtil.Instance.Warn(_message.MessageList["InitialValueSetting"]);
                 return Task.FromResult(string.Empty);
@@ -120,12 +136,27 @@ namespace SKYCOM.DLManagement.Services
                     {
                         if (templateList.Keys.Contains(productList[productName]))
                         {
-                            if (!File.Exists(templateList[productList[productName]]))
+                            #region CMF-Changes
+                            var blobClient = AzBlobStorageHelper.GetBlobClient(_settings.Value.BlobSettings.CommonContainerName, templateList[productList[productName]]); // Get the BlobClient for the given blob
+
+                            // Check if the blob exists
+                            if (!AzBlobStorageHelper.BlobExists(blobClient))
                             {
                                 LogUtil.Instance.Error(_message.MessageList["NonexistentProductName"]);
-                                return Task.FromResult(string.Empty);
+                                return Task.FromResult(string.Empty); // Return empty if the blob does not exist
                             }
-                            return Task.FromResult(File.ReadAllText(templateList[productList[productName]]));
+                            // Download and return the content of the blob
+                            return Task.FromResult(AzBlobStorageHelper.DownloadBlobContent(blobClient));
+                            #endregion
+
+                            #region existing code
+                            //if (!File.Exists(templateList[productList[productName]]))
+                            //{
+                            //    LogUtil.Instance.Error(_message.MessageList["NonexistentProductName"]);
+                            //    return Task.FromResult(string.Empty);
+                            //}
+                            //return Task.FromResult(File.ReadAllText(templateList[productList[productName]]));
+                            #endregion
                         }
                     }
                     return Task.FromResult(string.Empty);

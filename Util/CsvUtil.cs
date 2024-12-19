@@ -15,6 +15,9 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
+using SKYCOM.DLManagement.AzureHelper;
+using Microsoft.Extensions.Configuration;
+
 
 namespace SKYCOM.DLManagement.Util
 {
@@ -31,6 +34,22 @@ namespace SKYCOM.DLManagement.Util
         private const int UPDAT_CONTACT_INDEX = 21; // 更新窓口企業名
 
         private static Dictionary<string, string> _messageList;
+
+        private static IConfiguration _configuration;
+
+        // Static property to hold the container name (if needed)
+        public static string CommonContainerName { get; private set; }
+
+        // Method to configure the static class with IConfiguration
+        public static void Configure(IConfiguration configuration)
+        {
+            _configuration = configuration;
+
+            // Read the container name from the configuration
+            CommonContainerName = _configuration["BlobSettings:CommonContainerName"];
+        }
+
+
 
         /// <summary>
         /// CSVファイルの読み込み
@@ -58,7 +77,14 @@ namespace SKYCOM.DLManagement.Util
                     return null;
                 }
                 // ファイル存在チェック
-                if(!File.Exists(csvFilePath))
+
+                #region CMF-Changes
+                var blobClient = AzBlobStorageHelper.GetBlobClient(CommonContainerName, csvFilePath); // Get the BlobClient for the given blob
+                // Check if the blob exists
+                if (!AzBlobStorageHelper.BlobExists(blobClient))
+                #endregion
+
+                // if (!File.Exists(csvFilePath)) --existing code
                 {
                     LogUtil.Instance.Error(_messageList["NonexistentFile"]);
                     message = _messageList["NonexistentFile"];

@@ -50,7 +50,7 @@ namespace SKYCOM.DLManagement
                 options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
             });
             services.AddBlazoredLocalStorage();
-            services.AddSingleton<Message>(new Message(Configuration.GetSection("MessagePath").Value));
+            services.AddSingleton<Message>(new Message(Configuration.GetSection("MessagePath").Value,Configuration.GetSection("StorageContainerName").Value));
             services.AddOptions<Settings>().Bind(Configuration.GetSection("Settings"));
             services.AddMvc(options => options.EnableEndpointRouting = false);
             //services.AddDbContext<DbAccess>(options => options.UseMySql(Configuration.GetConnectionString("DefaultConnection")));
