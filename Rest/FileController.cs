@@ -683,15 +683,26 @@ namespace SKYCOM.DLManagement.Rest
 
                 Response.Headers.Append(HEADER_DISPOSITION, string.Format(ATTACHMENT, fileName));
                 Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
-                using var ms = new MemoryStream();
-                using TextWriter tw = new StreamWriter(ms, Encoding.GetEncoding(ENCODING_SJIS));
-                using var csv = new CsvWriter(tw, new CsvConfiguration(CultureInfo.GetCultureInfo("ja-JP")) { NewLine = "\r\n", HasHeaderRecord = true });
-                tw.NewLine = "\r\n";
-                csv.Context.RegisterClassMap<DLStateManagementMapper>();
-                csv.WriteRecords(csvData);
-                tw.Flush();
-                ms.Seek(0, SeekOrigin.Begin);
-                return File(ms.ToArray(), "text/csv", fileName);
+
+                //using var ms = new MemoryStream();
+                //using TextWriter tw = new StreamWriter(ms, Encoding.GetEncoding(ENCODING_SJIS));
+                //using var csv = new CsvWriter(tw, new CsvConfiguration(CultureInfo.GetCultureInfo("ja-JP")) { NewLine = "\r\n", HasHeaderRecord = true });
+                //tw.NewLine = "\r\n";
+                //csv.Context.RegisterClassMap<DLStateManagementMapper>();
+                //csv.WriteRecords(csvData);
+                //tw.Flush();
+                //ms.Seek(0, SeekOrigin.Begin);
+                //return File(ms.ToArray(), "text/csv", fileName);
+
+                // Download the blob content as a memory stream
+                var containerName = _settings.Value.BlobSettings.CommonContainerName; // This should be replaced by customer with actual container name
+                Stream blobStream = AzBlobStorageHelper.DownloadBlobAsync(fileName, containerName);
+
+                // Reset the position of the stream to the beginning
+                blobStream.Seek(0, SeekOrigin.Begin);
+
+                // Return the blob content as a downloadable file
+                return File(blobStream, "text/csv", fileName);                
             }
             catch (Exception ex)
             {
