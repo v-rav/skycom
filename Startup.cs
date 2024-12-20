@@ -58,7 +58,8 @@ namespace SKYCOM.DLManagement
             // Register AzBlobStorageHelper for dependency injection
             services.AddSingleton<AzBlobStorageHelper>();
 
-            //Register Blob helper provider to access without dependency injection from static file.cs
+            ////Register Blob helper provider to access without dependency injection from static file.cs
+        #pragma warning disable ASP0000
             var serviceProvider = services.BuildServiceProvider();
             BlobHelperProvider.BlobHelper = serviceProvider.GetService<AzBlobStorageHelper>();
 
