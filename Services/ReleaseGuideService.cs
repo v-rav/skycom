@@ -37,6 +37,7 @@ namespace SKYCOM.DLManagement.Services
         private readonly NavigationManager _navigationManager;
         private readonly Message _message;
         private IDbContextTransaction _transaction;
+        private readonly AzBlobStorageHelper _azBlobStorageHelper;
 
         /// <summary>
         /// コンストラクタ
@@ -45,12 +46,13 @@ namespace SKYCOM.DLManagement.Services
         /// <param name="settings">Settingsインスタンス</param>
         /// <param name="navigationManager">NavigationManager</param>
         /// <param name="message">Message</param>
-        public ReleaseGuideService(DbAccess context, IOptions<Settings> settings, NavigationManager navigationManager, Message message)
+        public ReleaseGuideService(DbAccess context, IOptions<Settings> settings, NavigationManager navigationManager, Message message, AzBlobStorageHelper azBlobStorageHelper)
         {
             _context = context;
             _settings = settings;
             _navigationManager = navigationManager;
             _message = message;
+            _azBlobStorageHelper = azBlobStorageHelper;
         }
 
         /// <summary>
@@ -77,16 +79,16 @@ namespace SKYCOM.DLManagement.Services
                 if (templateList.Keys.Contains(defaultTemplate))
                 {
                     #region CMF-Changes
-                    var blobClient = AzBlobStorageHelper.GetBlobClient(_settings.Value.BlobSettings.CommonContainerName, templateList[defaultTemplate]); // Get the BlobClient for the given blob
+                    var blobClient = _azBlobStorageHelper.GetBlobClient(_settings.Value.BlobSettings.CommonContainerName, templateList[defaultTemplate]); // Get the BlobClient for the given blob
 
                     // Check if the blob exists
-                    if (!AzBlobStorageHelper.BlobExists(blobClient))
+                    if (!_azBlobStorageHelper.BlobExists(blobClient))
                     {
                         LogUtil.Instance.Error(_message.MessageList["NonexistentFile"]);
                         return Task.FromResult(string.Empty); // Return empty if the blob does not exist
                     }
                     // Download and return the content of the blob
-                    return Task.FromResult(AzBlobStorageHelper.DownloadBlobContent(blobClient));
+                    return Task.FromResult(_azBlobStorageHelper.DownloadBlobContent(blobClient));
                     #endregion
 
                     #region existing changes
@@ -137,16 +139,16 @@ namespace SKYCOM.DLManagement.Services
                         if (templateList.Keys.Contains(productList[productName]))
                         {
                             #region CMF-Changes
-                            var blobClient = AzBlobStorageHelper.GetBlobClient(_settings.Value.BlobSettings.CommonContainerName, templateList[productList[productName]]); // Get the BlobClient for the given blob
+                            var blobClient = _azBlobStorageHelper.GetBlobClient(_settings.Value.BlobSettings.CommonContainerName, templateList[productList[productName]]); // Get the BlobClient for the given blob
 
                             // Check if the blob exists
-                            if (!AzBlobStorageHelper.BlobExists(blobClient))
+                            if (!_azBlobStorageHelper.BlobExists(blobClient))
                             {
                                 LogUtil.Instance.Error(_message.MessageList["NonexistentProductName"]);
                                 return Task.FromResult(string.Empty); // Return empty if the blob does not exist
                             }
                             // Download and return the content of the blob
-                            return Task.FromResult(AzBlobStorageHelper.DownloadBlobContent(blobClient));
+                            return Task.FromResult(_azBlobStorageHelper.DownloadBlobContent(blobClient));
                             #endregion
 
                             #region existing code

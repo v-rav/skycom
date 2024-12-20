@@ -16,6 +16,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using SKYCOM.DLManagement.AzureHelper;
 using SKYCOM.DLManagement.Data;
 using SKYCOM.DLManagement.Entity;
 using SKYCOM.DLManagement.Services;
@@ -50,8 +51,19 @@ namespace SKYCOM.DLManagement
                 options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
             });
             services.AddBlazoredLocalStorage();
-            services.AddSingleton<Message>(new Message(Configuration.GetSection("MessagePath").Value,Configuration.GetSection("StorageContainerName").Value));
+            
+            //Register configuration settings to access properties of appsettings.json
             services.AddOptions<Settings>().Bind(Configuration.GetSection("Settings"));
+
+            // Register AzBlobStorageHelper for dependency injection
+            services.AddSingleton<AzBlobStorageHelper>();
+
+            //Register Blob helper provider to access without dependency injection from static file.cs
+            var serviceProvider = services.BuildServiceProvider();
+            BlobHelperProvider.BlobHelper = serviceProvider.GetService<AzBlobStorageHelper>();
+
+            services.AddSingleton<Message>(new Message(Configuration.GetSection("MessagePath").Value));
+
             services.AddMvc(options => options.EnableEndpointRouting = false);
             //services.AddDbContext<DbAccess>(options => options.UseMySql(Configuration.GetConnectionString("DefaultConnection")));
             var connectionString = Configuration.GetConnectionString("DefaultConnection");
@@ -65,9 +77,13 @@ namespace SKYCOM.DLManagement
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
 #pragma warning disable CA1822 // メンバーを static に設定します
-        public void Configure(IApplicationBuilder app, IWebHostEnvironment env, ILoggerFactory loggerFactory)
+        public void Configure(IApplicationBuilder app, IWebHostEnvironment env, ILoggerFactory loggerFactory, IServiceProvider serviceProvider)
 #pragma warning restore CA1822 // メンバーを static に設定します
         {
+
+            // Initialize the static BlobHelperProvider
+            BlobHelperProvider.BlobHelper = serviceProvider.GetRequiredService<AzBlobStorageHelper>();
+
             loggerFactory.AddLog4Net();
             if (env.IsDevelopment())
             {
