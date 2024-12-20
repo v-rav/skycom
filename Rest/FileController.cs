@@ -45,6 +45,7 @@ namespace SKYCOM.DLManagement.Rest
         private readonly DbAccess _context;
         private readonly IOptions<Settings> _settings;
         private readonly Message _message;
+        private readonly AzBlobStorageHelper _azBlobStorageHelper;
 
         /// <summary>
         /// コンストラクタ
@@ -52,11 +53,12 @@ namespace SKYCOM.DLManagement.Rest
         /// <param name="context"></param>
         /// <param name="settings"></param>
         /// <param name="message"></param>
-        public FileController(DbAccess context, IOptions<Settings> settings, Message message)
+        public FileController(DbAccess context, IOptions<Settings> settings, Message message,AzBlobStorageHelper azBlobStorageHelper)
         {
             _context = context;
             _settings = settings;
             _message = message;
+            _azBlobStorageHelper = azBlobStorageHelper;
         }
 
         /// <summary>
@@ -210,7 +212,7 @@ namespace SKYCOM.DLManagement.Rest
                     using (var stream = new MemoryStream())
                     {
                         await file.CopyToAsync(stream).ConfigureAwait(false);
-                        AzBlobStorageHelper.UploadFileToAzure(stream, file.FileName, BlobContainerName);
+                        _azBlobStorageHelper.UploadFileToAzure(stream, file.FileName, BlobContainerName);
                     }
                     //File size check is not needed here // so commented
                     // ファイルサイズのチェック                    
@@ -423,7 +425,7 @@ namespace SKYCOM.DLManagement.Rest
                 Response.Headers.Append(HEADER_DISPOSITION, string.Format(ATTACHMENT, fileName));
                 //var fs = new FileStream(filePath, FileMode.Open);
                 //Reading file from blob below
-                var ms = AzBlobStorageHelper.DownloadBlobAsync(fileName, containerName);
+                var ms = _azBlobStorageHelper.DownloadBlobAsync(fileName, containerName);
                 return new FileStreamResult(ms, MimeKit.MimeTypes.GetMimeType(fileName));
             }
             catch (Exception ex)
@@ -696,7 +698,7 @@ namespace SKYCOM.DLManagement.Rest
 
                 // Download the blob content as a memory stream
                 var containerName = _settings.Value.BlobSettings.CommonContainerName; // This should be replaced by customer with actual container name
-                Stream blobStream = AzBlobStorageHelper.DownloadBlobAsync(fileName, containerName);
+                Stream blobStream = _azBlobStorageHelper.DownloadBlobAsync(fileName, containerName);
 
                 // Reset the position of the stream to the beginning
                 blobStream.Seek(0, SeekOrigin.Begin);

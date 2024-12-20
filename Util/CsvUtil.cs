@@ -79,9 +79,9 @@ namespace SKYCOM.DLManagement.Util
                 // ファイル存在チェック
 
                 #region CMF-Changes
-                var blobClient = AzBlobStorageHelper.GetBlobClient(CommonContainerName, csvFilePath); // Get the BlobClient for the given blob
+                //var blobClient = AzBlobStorageHelper.GetBlobClient(CommonContainerName, csvFilePath); // Get the BlobClient for the given blob
                 // Check if the blob exists
-                if (!AzBlobStorageHelper.BlobExists(blobClient))
+                //if (!AzBlobStorageHelper.BlobExists(blobClient))
                 #endregion
 
                 // if (!File.Exists(csvFilePath)) --existing code

@@ -6,6 +6,7 @@
 // EandM
 //=============================================================================
 
+using Microsoft.Extensions.Options;
 using SKYCOM.DLManagement.AzureHelper;
 using System.Collections.Generic;
 using System.Configuration;
@@ -18,11 +19,11 @@ namespace SKYCOM.DLManagement.Data
     public class Message
     {
         public Dictionary<string, string> MessageList { get; }
-        public Message(string jsonPath,string containername)
+        public Message(string jsonPath)
         {
             #region CMF-Changes
-            MemoryStream memoryStream = AzBlobStorageHelper.DownloadBlobToMemoryStream(containername, jsonPath);
-            // Deserialize the JSON content from the memory stream
+            MemoryStream memoryStream = BlobHelperProvider.BlobHelper.DownloadBlobToMemoryStream(jsonPath);
+             //Deserialize the JSON content from the memory stream
             MessageList = JsonSerializer.Deserialize<Dictionary<string, string>>(new StreamReader(memoryStream).ReadToEnd());
             #endregion
 
