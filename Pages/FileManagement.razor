@@ -1,0 +1,339 @@
+﻿<!--
+//=============================================================================
+// FileManagement
+// ファイル管理画面の表示設定
+//
+// Copyright (C) SKYCOM Corporation
+// EandM
+//=============================================================================
+-->
+
+@page "/FileManagement"
+
+@using SKYCOM.DLManagement.Data
+@using SKYCOM.DLManagement.Services
+@using SKYCOM.DLManagement.Util
+@using System.IO;
+@using System.Collections.Generic
+@using System.Threading.Tasks
+@using System.Text.Json
+@using Microsoft.Extensions.Options
+@inject Message _message
+@inject IOptions<Settings> _settings
+@inject IJSRuntime JsRuntime
+@inject FileManagementService _service
+@inject Blazored.LocalStorage.ILocalStorageService localStorage
+
+
+<h1>@_message.MessageList["FileManagement"]</h1>
+
+<form id="uploadForm" method="post" enctype="multipart/form-data">
+    <div class="dropzone" draggable="true"  @ondragstart:preventDefault @ondragleave:preventDefault>
+        <input type="file" id="file" name="file" accept=".zip,.csv" @onchange="(e) => FileChange(e)" />
+        <input type="hidden" id="path" name="path" value=@currentDirectory />
+        <input type="hidden" id="fileSize" name="fileSize" value=@selectFileSize />
+        @_message.MessageList["UploadFileChoice"]
+    </div>
+</form>
+<br />
+<div class="selectFile">
+    @if (!string.IsNullOrEmpty(selectFileName))
+    {
+        <span style=" font-weight: bold">@_message.MessageList["FileToUpload"]</span>
+        <span style=" font-weight: normal">@selectFileName</span>
+        <button class="btn btn-link text-danger p-0 pl-1" @onclick="DeleteFile">@_message.MessageList["Delete"]</button>
+    }
+</div>
+
+<div class="row">
+    @if (uploadClass == MIDDLE_CLASS)
+    {
+    <button class="@uploadClass" style="margin-left:10px;" type="button" @onclick="Upload">@_message.MessageList["Upload"]</button>
+    }
+    else
+    {
+        <div class="@uploadClass">@_message.MessageList["Upload"]</div>
+    }
+</div>
+<br />
+
+<div class="upLoadDestination">
+    <div class="dirAddress">
+        <!--現在のdirを表示する-->
+        @currentDirectory
+    </div>
+    <table class="table">
+        <thead>
+            <tr>
+                <th style="flex: 1">@_message.MessageList["Name"]</th>
+                <th style="width: 150px">@_message.MessageList["Size"]</th>
+                <th style="width: 150px">@_message.MessageList["UpdateTime"]</th>
+            </tr>
+        </thead>
+        <tbody>
+            @if (currentDirectory != initialDirectory)
+            {
+                <tr @onclick="BeforeDirectory">
+                    <th height="20" style="flex: 1"><img border="0" src="../images/ArrowUp.png" width="20" style="background-color:cadetblue; margin-right: 10px" />@_message.MessageList["HigherLevelDirectory"]</th>
+                    <th colspan="2"></th>
+                </tr>
+            }
+            @if (serverFileInfos != null && serverFileInfos.Count > 0)
+            {
+                @foreach (var serverFileInfo in serverFileInfos)
+                {
+                    if ((serverFileInfo.Attributes & (FileAttributes.Hidden | FileAttributes.System)) == 0)//隠しファイルを表示しない。
+                    {
+                        <tr @onclick="@(() => NextDirectory(serverFileInfo))">
+                            @if (serverFileInfo.IsFile)
+                            {
+                                // ファイル
+                                <td style="flex: 1">@serverFileInfo.FileName</td>
+                                <td style="text-align: right; width: 150px">@String.Format("{0:#,0}", serverFileInfo.FileSize)</td>
+                                <td style="width: 150px">@serverFileInfo.Date.ToString("yyyy/MM/dd HH:mm")</td>
+                            }
+                            else
+                            {
+                                // フォルダ
+                                <td style="flex: 1"><img border="0" src="../images/Folder-05.png" width="25" height="20" alt="folder" style="margin-right: 10px" />@serverFileInfo.FileName</td>
+                                <td style="width: 150px"></td>
+                                <td style="width: 150px">@serverFileInfo.Date.ToString("yyyy/MM/dd HH:mm")</td>
+                            }
+                        </tr>
+                    }
+                }
+            }
+        </tbody>
+    </table>
+    <hr style="border-top: 1px solid #343a40;">
+</div>
+
+<SKYCOM.DLManagement.Pages.DlgProgress @ref="Uploading"></SKYCOM.DLManagement.Pages.DlgProgress>
+@code {
+    private DLManagement.Pages.DlgProgress Uploading { get; set; }
+}
+<SKYCOM.DLManagement.Pages.DlgError @ref="ErrorDisp"></SKYCOM.DLManagement.Pages.DlgError>
+@code {
+    private DLManagement.Pages.DlgError ErrorDisp { get; set; }
+}
+<SKYCOM.DLManagement.Pages.DlgConfirm @ref="Confirm"></SKYCOM.DLManagement.Pages.DlgConfirm>
+@code {
+    public DlgConfirm Confirm { get; set; }
+}
+
+@code {
+    private const string MIDDLE_CLASS = "btn btn-primary btn-middle";
+    private const string MIDDLE_DISABLED_CLASS = "btn btn-disabled btn-middle";
+
+
+    private string uploadClass = MIDDLE_DISABLED_CLASS;
+    private List<ServerFileInfo> serverFileInfos;
+    private string currentDirectory = string.Empty;
+    private string initialDirectory = string.Empty;
+    private string selectFileName = string.Empty;
+    private long selectFileSize = 0L;
+
+
+    /// <summary>
+    /// 初期化処理
+    /// </summary>
+    /// <returns></returns>
+    protected override async Task OnInitializedAsync()
+    {
+        LogUtil.Instance.Trace("start");
+        try
+        {
+            initialDirectory = _settings.Value.Upload.UploadFileRootPath;
+        }
+        catch (Exception ex)
+        {
+            LogUtil.Instance.Warn(_message.MessageList["FraudSettings"], ex);
+            throw;
+        }
+        LogUtil.Instance.Debug($"Current directory {initialDirectory}");
+        serverFileInfos = await _service.GetServerFileInfos(new ServerFileInfo() { FullPath = initialDirectory });
+        currentDirectory = initialDirectory;
+        LogUtil.Instance.Trace("end");
+    }
+
+    /// <summary>
+    /// レンダリング後イベント処理
+    /// </summary>
+    /// <param name="firstRender"></param>
+    /// <returns></returns>
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        LogUtil.Instance.Trace("start");
+        if (firstRender && localStorage != null && await localStorage.ContainKeyAsync("IsEdit"))
+        {
+            await localStorage.RemoveItemAsync("IsEdit");
+        }
+        LogUtil.Instance.Trace("end");
+    }
+
+    /// <summary>
+    /// 次のディレクトリに移動
+    /// </summary>
+    /// <param name="serverFileInfo">選択されたファルダ情報</param>
+    async void NextDirectory(ServerFileInfo serverFileInfo)
+    {
+        LogUtil.Instance.Trace("start");
+        try
+        {
+            if (serverFileInfo.IsFile)
+            {
+                // ファイルの場合は何もしない
+                return;
+            }
+            serverFileInfos = await _service.GetServerFileInfos(serverFileInfo);
+            currentDirectory = serverFileInfo.FullPath;
+        }
+        finally
+        {
+            LogUtil.Instance.Trace("end");
+        }
+    }
+
+    /// <summary>
+    /// ひとつ上のディレクトリへ移動
+    /// </summary>
+    async void BeforeDirectory()
+    {
+        LogUtil.Instance.Trace("start");
+        try
+        {
+            if (currentDirectory == initialDirectory)
+            {
+                //ひとつ上のディレクトリへいかない
+                return;
+            }
+            var serverFileInfo = new ServerFileInfo() { FullPath = Directory.GetParent(currentDirectory).FullName };
+            serverFileInfos = await _service.GetServerFileInfos(serverFileInfo);
+            currentDirectory = serverFileInfo.FullPath;
+        }
+        finally
+        {
+            LogUtil.Instance.Trace("end");
+        }
+    }
+
+    /// <summary>
+    /// ファイル選択時処理
+    /// ファイルサイズを取得する
+    /// </summary>
+    async void FileChange(ChangeEventArgs e)
+    {
+        LogUtil.Instance.Trace("start");
+        try
+        {
+            var fileSize = await JsRuntime.InvokeAsync<long>("fileManagementJsFunctions.getFileSize", new object[] { "file" }).ConfigureAwait(false);
+            if (fileSize > _settings.Value.Upload.MaxUploadFileSize)
+            {
+                ErrorDisp.Open(_message.MessageList["UploadFileSizeOver"]);
+                while (ErrorDisp.IsShowBackdrop)
+                {
+                    await Task.Delay(100);
+                }
+                await JsRuntime.InvokeVoidAsync("fileManagementJsFunctions.clearFile", new object[] { "uploadForm", "file" }).ConfigureAwait(false);
+                return;
+            }
+            await localStorage.SetItemAsync<bool>("IsEdit", true);
+            selectFileSize = fileSize;
+            selectFileName = Path.GetFileName(e.Value.ToString());
+            selectFileName = selectFileName.Replace("C:\\fakepath\\", "");
+            uploadClass = MIDDLE_CLASS;
+            await InvokeAsync(() => StateHasChanged());
+        }
+        finally
+        {
+            LogUtil.Instance.Trace("end");
+        }
+
+    }
+
+    /// <summary>
+    /// 選択したファイルを削除
+    /// </summary>
+    async void DeleteFile()
+    {
+        LogUtil.Instance.Trace("start");
+        try
+        {
+            await localStorage.SetItemAsync<bool>("IsEdit", false);
+            selectFileName = string.Empty;
+            await JsRuntime.InvokeVoidAsync("fileManagementJsFunctions.clearFile", new object[] { "uploadForm", "file" }).ConfigureAwait(false);
+            uploadClass = MIDDLE_DISABLED_CLASS;
+            await InvokeAsync(() => StateHasChanged());
+        }
+        finally
+        {
+            LogUtil.Instance.Trace("end");
+        }
+    }
+
+    /// <summary>
+    /// アップロードボタン押下処理
+    /// </summary>
+    async void Upload()
+    {
+        LogUtil.Instance.Trace("start");
+        try
+        {
+            if (uploadClass == MIDDLE_DISABLED_CLASS) return;
+            // 上書き確認
+            if (serverFileInfos.Where(x => x.FileName == selectFileName).Any())
+            {
+                LogUtil.Instance.Debug($"I found a file with the same name.{selectFileName}");
+                Confirm.Open(DlgConfirm.MODE.Overwride);
+                while (Confirm.Displayed)
+                {
+                    await Task.Delay(100);
+                }
+                if (!Confirm.Result)
+                {
+                    // いいえが押下された場合はアップロードしない
+                    return;
+                }
+            }
+
+
+            Uploading.Open(_message.MessageList["Uploading"]);
+            await Task.Delay(500);
+            var response = await JsRuntime.InvokeAsync<object>("fileManagementJsFunctions.formUpload", new object[] { "uploadForm" }).ConfigureAwait(false);
+            Uploading.Close();
+            var result = JsonSerializer.Deserialize<Response>(response.ToString().Replace("\\", "").Replace("\"{", "{").Replace("}\"", "}"));
+            if (result.StatusCode != 201)
+            {
+                ErrorDisp.Open(string.Format(_message.MessageList["UploadFailed"], result.Body.message));
+                return;
+            }
+            serverFileInfos = await _service.GetServerFileInfos(new ServerFileInfo() { FullPath = currentDirectory });
+            selectFileName = string.Empty;
+            uploadClass = MIDDLE_DISABLED_CLASS;
+            await InvokeAsync(() => StateHasChanged());
+            if (await localStorage.ContainKeyAsync("IsEdit"))
+            {
+                await localStorage.RemoveItemAsync("IsEdit");
+            }
+        }
+        finally
+        {
+            LogUtil.Instance.Trace("end");
+        }
+    }
+
+    #region REST I/Fレスポンス解析クラス
+    private class Response
+    {
+        public int StatusCode { get; set; }
+        public ResponseBody Body { get; set; }
+    }
+
+    private class ResponseBody
+    {
+        public string errorCode { get; set; }
+        public string message { get; set; }
+    }
+    #endregion
+}
+

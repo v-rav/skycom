@@ -1,0 +1,116 @@
+﻿<!--
+//=============================================================================
+// DlgConfirm
+// 確認ダイアログ表示
+//
+// Copyright (C) SKYCOM Corporation
+// EandM
+//=============================================================================
+-->
+
+@using SKYCOM.DLManagement.Data
+@using System.Threading
+@inject Message _message
+<div>
+    <div class="modal @modalClass" tabindex="-1" role="dialog" style="display:@modalDisplay;top:35%;">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">@title</h5>
+                </div>
+                <div class="modal-body">
+                    <p>@message</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal" @onclick="() => Close(true)">@_message.MessageList["Yes"]</button>
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal" @onclick="() => Close(false)">@_message.MessageList["No"]</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+@if (isShowBackdrop)
+{
+    <div class="modal-backdrop fade show"></div>
+}
+
+
+@code {
+
+    public enum MODE
+    {
+        Overwride,
+        BeforeSend,
+        Clear,
+        EditCancel,
+        UploadFileChoiced
+    }
+
+    private string modalDisplay = "none;";
+    private string modalClass = "";
+    private bool isShowBackdrop = false;
+    private string title = string.Empty;
+    private string message = string.Empty;
+
+    public bool Result = false;
+    public bool Displayed = false;
+
+    public async void Open(MODE mode)
+    {
+        switch (mode)
+        {
+            case MODE.Overwride:
+                title = _message.MessageList["OverWriteCheckTitle"];
+                message = _message.MessageList["FileChange"];
+                break;
+            case MODE.BeforeSend:
+                title = _message.MessageList["SendConfirmation"];
+                message = _message.MessageList["SendStartCheck"];
+                break;
+            case MODE.Clear:
+                title = _message.MessageList["ClearCheckTitle"];
+                message = _message.MessageList["ClearCheckText"];
+                break;
+            case MODE.EditCancel:
+                title = _message.MessageList["EditCancelCheckTitle"];
+                message = _message.MessageList["EditCancelCheck"];
+                break;
+            case MODE.UploadFileChoiced:
+                title = _message.MessageList["EditCancelCheckTitle"];
+                message = _message.MessageList["UploadFileChoiced"];
+                break;
+        }
+
+        modalDisplay = "block;";
+        modalClass = "Show";
+        isShowBackdrop = true;
+        Displayed = true;
+        if (Thread.CurrentThread.IsBackground)
+        {
+            await InvokeAsync(() => StateHasChanged());
+        }
+        else
+        {
+            StateHasChanged();
+        }
+
+    }
+    public async void Close(bool isResult)
+    {
+        modalDisplay = "none";
+        modalClass = "";
+        isShowBackdrop = false;
+        Result = isResult;
+        Displayed = false;
+        if (Thread.CurrentThread.IsBackground)
+        {
+            await InvokeAsync(() => StateHasChanged());
+        }
+        else
+        {
+            StateHasChanged();
+        }
+    }
+}

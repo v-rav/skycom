@@ -1,0 +1,203 @@
+﻿<!--
+//=============================================================================
+// DlgSelectFile
+// ファイル選択ダイアログ表示
+// 
+// Copyright (C) SKYCOM Corporation
+// EandM
+//=============================================================================
+-->
+
+@using SKYCOM.DLManagement.Data
+@using SKYCOM.DLManagement.Services
+@using System.Data
+@using System.IO
+@using Microsoft.Extensions.Options;
+@inject FileManagementService _service
+@inject Message _message
+@inject IOptions<Settings> _settings
+
+
+<div class="modal @modalClass" tabindex="-1" role="dialog" style="display:@modalDisplay">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">@_message.MessageList["FileChoice"]</h5>
+            </div>
+            <div class="modal-body">
+
+                <div class="dirAddress">
+                    <!--現在のdirを表示する-->
+                    @currentDirectory
+                </div>
+                <div class="SelectFile">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th style="width:285px">@_message.MessageList["Name"]</th>
+                                <th style="width:150px">@_message.MessageList["Size"]</th>
+                                <th style="width:165px">@_message.MessageList["UpdateTime"]</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (currentDirectory != initialDirectory)
+                                    {
+                            <tr @onclick="BeforeDirectory">
+                                <th height="20" style="width:285px"><img border="0" src="../images/ArrowUp.png" width="20" style="margin-right: 10px; background-color:cadetblue" />@_message.MessageList["HigherLevelDirectory"]</th>
+                                <th colspan="2"></th>
+                            </tr>
+                                    }
+                            @if (serverFileInfos != null && serverFileInfos.Count > 0)
+                                    {
+                            @foreach (var serverFileInfo in serverFileInfos)
+                                        {
+
+                                            if ((serverFileInfo.Attributes & (FileAttributes.Hidden | FileAttributes.System)) == 0)//隠しファイルを表示しない。
+                                            {
+                            <tr @onclick="@(() => NextDirectory(serverFileInfo))">
+                                @if (serverFileInfo.IsFile)
+                                                    {
+                                                        if (SelectFileName == @serverFileInfo.FileName)
+                                                        {
+                                <td style="background-color: #FFCC00;width:285px">@serverFileInfo.FileName</td>
+                                <td style="background-color: #FFCC00; text-align: right;width:150px;">@String.Format("{0:#,0}", serverFileInfo.FileSize)</td>
+                                <td style="background-color: #FFCC00;width:165px">@serverFileInfo.Date.ToString("yyyy/MM/dd HH:mm")</td>
+                                                        }
+                                                        else
+                                                        {
+                                <td style="width: 285px">@serverFileInfo.FileName</td>
+                                <td style="text-align: right;width:150px">@String.Format("{0:#,0}", serverFileInfo.FileSize)</td>
+                                <td style="width:165px">@serverFileInfo.Date.ToString("yyyy/MM/dd HH:mm")</td>
+                                                        }
+                                                    }
+                                                    else
+                                                    {
+                                                        // フォルダ
+                                <td style="width: 285px"><img border="0" src="../images/Folder-05.png" width="25" height="20" alt="folder" style="margin-right: 10px;" />@serverFileInfo.FileName</td>
+                                <td style="width:150px"></td>
+                                <td style="width:165px">@serverFileInfo.Date.ToString("yyyy/MM/dd HH:mm")</td>
+                                                    }
+                            </tr>
+                                            }
+                                        }
+                                    }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal" disabled="@string.IsNullOrEmpty(SelectFileFullPath)" @onclick="@(() => Close(true))">@_message.MessageList["Decide"]</button>
+                <button type="button" class="btn btn-secondary" data-dismiss="modal" @onclick="@(() => Close(false))">@_message.MessageList["Close"]</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+@if (isShowBackdrop)
+{
+<div class="modal-backdrop fade show"></div>
+}
+
+
+<SKYCOM.DLManagement.Pages.DlgError @ref="ErrorDisp"></SKYCOM.DLManagement.Pages.DlgError>
+@code {
+    private SKYCOM.DLManagement.Pages.DlgError ErrorDisp { get; set; }
+}
+
+@code {
+    private string modalDisplay = "none;";
+    private string modalClass = "";
+    private bool isShowBackdrop = false;
+    private List<ServerFileInfo> serverFileInfos;
+    private string currentDirectory = string.Empty;
+    private string initialDirectory = string.Empty;
+
+    public string SelectFileName = string.Empty;
+    public string SelectFileFullPath = string.Empty;
+    public bool Displayed = false;
+    public bool Result = false;
+
+    /// <summary>
+    /// ファイル選択ダイアログを表示する
+    /// </summary>
+    public async void Open()
+    {
+        modalDisplay = "block;";
+        modalClass = "Show";
+        isShowBackdrop = true;
+        Displayed = true;
+
+        //初期化
+        SelectFileName = string.Empty;
+        SelectFileFullPath = string.Empty;
+
+
+        initialDirectory = _settings.Value.Upload.UploadFileRootPath;
+        serverFileInfos = await _service.GetServerFileInfos(new ServerFileInfo() { FullPath = initialDirectory });
+        currentDirectory = initialDirectory;
+        await InvokeAsync(() => StateHasChanged());
+    }
+
+    /// <summary>
+    /// ファイル選択ダイアログを閉じる
+    /// </summary>
+    async void Close(bool isResult)
+    {
+
+        modalDisplay = "none";
+        modalClass = "";
+        isShowBackdrop = false;
+        Displayed = false;//子画面終了
+        Result = isResult;
+        await InvokeAsync(() => StateHasChanged());
+    }
+
+    /// <summary>
+    /// 初期化処理
+    /// </summary>
+    /// <returns></returns>
+    protected override async Task OnInitializedAsync()
+    {
+        initialDirectory = _settings.Value.Upload.UploadFileRootPath;
+        serverFileInfos = await _service.GetServerFileInfos(new ServerFileInfo() { FullPath = initialDirectory });
+        currentDirectory = initialDirectory;
+    }
+
+
+    /// <summary>
+    /// 次のディレクトリに移動
+    /// </summary>
+    /// <param name="serverFileInfo">選択されたファルダ情報</param>
+    async void NextDirectory(ServerFileInfo serverFileInfo)
+    {
+        SelectFileName = string.Empty;
+        SelectFileFullPath = string.Empty;
+        if (serverFileInfo.IsFile)
+        {
+            // ファイルの場合は選択状態として保持する
+            SelectFileName = serverFileInfo.FileName;
+            SelectFileFullPath = serverFileInfo.FullPath;
+            return;
+        }
+        var fileInfos = await _service.GetServerFileInfos(serverFileInfo);
+        currentDirectory = serverFileInfo.FullPath;
+        serverFileInfos = fileInfos;
+
+    }
+
+    /// <summary>
+    /// ひとつ上のディレクトリへ移動
+    /// </summary>
+    async void BeforeDirectory()
+    {
+        if (currentDirectory == initialDirectory)
+        {
+            //ひとつ上のディレクトリへいかない
+            return;
+        }
+        var serverFileInfo = new ServerFileInfo() { FullPath = Directory.GetParent(currentDirectory).FullName };
+        serverFileInfos = await _service.GetServerFileInfos(serverFileInfo);
+        currentDirectory = serverFileInfo.FullPath;
+    }
+}
