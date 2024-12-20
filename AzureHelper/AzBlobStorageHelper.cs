@@ -182,7 +182,7 @@ namespace SKYCOM.DLManagement.AzureHelper
                 BlobClient blobClient = containerClient.GetBlobClient(blobName);
 
                //Local testing
-               //var blobClient =  AccessBlobWithSasTocken(blobName);
+              //var blobClient =  AccessBlobWithSasTocken(blobName);
 
                 // Create a MemoryStream to hold the downloaded content
                 MemoryStream memoryStream = new MemoryStream();
