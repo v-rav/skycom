@@ -25,33 +25,32 @@ namespace SKYCOM.DLManagement.Util
         #region
         private static readonly LogUtil _instance = new LogUtil();
 
-        public static LogUtil Instance => _instance;
-        private readonly IOptions<Settings> _settings;
+        public static LogUtil Instance => _instance;        
         private const string LOG_CONFIG_FILE = "log4net.config";
         private const string LOG_MESSAGE_FORMART = "{0}.{1} - {2}";
         private static readonly CultureInfo cultureInfo = CultureInfo.GetCultureInfo("ja-JP");
-
         private static readonly ILog _logger = LogManager.GetLogger(Assembly.GetCallingAssembly(), MethodBase.GetCurrentMethod().DeclaringType);
+
+        //CMF-Azure helper
+       // private AzBlobStorageHelper _blobStorageHelper;
         #endregion
         #region コンストラクタ
         /// <summary>
         /// プライベートコンストラクタ
         /// </summary>
        
-        public LogUtil(IOptions<Settings> settings)
-        {
-            _settings = settings;
-        }
+     
         private LogUtil()
         {
             #region existingcode
-            //log4netConfig.Load(File.OpenRead(LOG_CONFIG_FILE));
+            var log4netConfig = new XmlDocument();
+            log4netConfig.Load(File.OpenRead(LOG_CONFIG_FILE));
             #endregion
 
             #region CMF-Changes
-            MemoryStream memoryStream = AzBlobStorageHelper.DownloadBlobToMemoryStream(_settings.Value.BlobSettings.CommonContainerName, LOG_CONFIG_FILE);
-            var log4netConfig = new XmlDocument();
-            log4netConfig.Load(memoryStream);
+            // MemoryStream memoryStream = BlobHelperProvider.BlobHelper.DownloadBlobToMemoryStream("skycomcontainer - 1", LOG_CONFIG_FILE);
+           // var log4netConfig = new XmlDocument();
+            //log4netConfig.Load(memoryStream);
             #endregion
 
 
