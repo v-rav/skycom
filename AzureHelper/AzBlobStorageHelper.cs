@@ -179,10 +179,10 @@ namespace SKYCOM.DLManagement.AzureHelper
                 BlobContainerClient containerClient = GetBlobContainerClientUsingManagedIdentity(containerName);
 
                 // Get a reference to the blob (file)
-                BlobClient blobClient = containerClient.GetBlobClient(blobName);
+               // BlobClient blobClient = containerClient.GetBlobClient(blobName);
 
                //Local testing
-              //var blobClient =  AccessBlobWithSasTocken(blobName);
+              var blobClient =  AccessBlobWithSasTocken(blobName);
 
                 // Create a MemoryStream to hold the downloaded content
                 MemoryStream memoryStream = new MemoryStream();
@@ -221,11 +221,35 @@ namespace SKYCOM.DLManagement.AzureHelper
                     {
                         blobClient.DownloadTo(memoryStream); // Download the blob to the memory stream
                         memoryStream.Position = 0; // Reset the position to read from the beginning
-
                         using (var reader = new StreamReader(memoryStream))
                         {
                             return reader.ReadToEnd(); // Return the content as a string
                         }
+                    }
+                }
+                else
+                    return null;
+            }
+            catch (Exception ex)
+            {
+                throw new Exception(string.Concat(Constants.BlobConstants.ConnectionFailedErrorMessage, ex.Message));
+            }
+        }
+
+        public MemoryStream DownloadBlobContentMemoryStream(string containerName, string blobName)
+        {
+            try
+            {
+                //Local testing
+                var blobClient = AccessBlobWithSasTocken(blobName);
+              //  var blobClient = GetBlobClient(containerName, blobName);
+                if (blobClient.Exists())
+                {
+                    using (var memoryStream = new MemoryStream())
+                    {
+                        blobClient.DownloadTo(memoryStream); // Download the blob to the memory stream
+                        memoryStream.Position = 0; // Reset the position to read from the beginning
+                        return memoryStream; // Return the content as a string
                     }
                 }
                 else

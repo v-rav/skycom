@@ -84,7 +84,7 @@ namespace SKYCOM.DLManagement.Services
 
                     // if blob content is null
                     if (string.IsNullOrEmpty( resultContent))
-                    {
+                     {
                         LogUtil.Instance.Error(_message.MessageList["NonexistentFile"]);
                         return Task.FromResult(string.Empty); // Return empty if the blob does not exist
                     }

@@ -12,9 +12,11 @@ using Google.Apis.Services;
 using Google.Apis.Util.Store;
 using Microsoft.Extensions.Options;
 using MimeKit;
+using SKYCOM.DLManagement.AzureHelper;
 using SKYCOM.DLManagement.Data;
 using SKYCOM.DLManagement.Util;
 using System;
+using System.CodeDom;
 using System.Globalization;
 using System.IO;
 using System.Security.Cryptography.X509Certificates;
@@ -35,6 +37,7 @@ namespace SKYCOM.DLManagement.GmailAPI
         private readonly string secretPassword;
         private readonly string gmailScope;
         private readonly bool isServiceAccount;
+        private readonly string BlobContainerName;
         private readonly Message _message;
         private readonly string[] scopes = { GmailService.Scope.GmailSend };
 
@@ -70,6 +73,7 @@ namespace SKYCOM.DLManagement.GmailAPI
                 gmailScope = settings.Value.Gmail.GmailScope;
                 // 認証方法
                 isServiceAccount = settings.Value.Gmail.IsServiceAccount;
+                BlobContainerName = settings.Value.BlobSettings.CommonContainerName;
             }
             catch (Exception ex)
             {
@@ -101,10 +105,16 @@ namespace SKYCOM.DLManagement.GmailAPI
                     if (isServiceAccount)
                     {
                         LogUtil.Instance.Debug("Setting is ServiceAccount");
+
+                        //CMF-Changes
+                        MemoryStream memoryStream = BlobHelperProvider.BlobHelper.DownloadBlobContentMemoryStream(BlobContainerName, keyFilePath); // Get the BlobClient for the given blob
+                        
                         //サービスアカウントAPI認証
-                        if (File.Exists(keyFilePath))
+                        // if (File.Exists(keyFilePath)) ---existing code
+                        if (memoryStream != null || memoryStream.Length != 0) //CMF-Changes
                         {
-                            var certificate = new X509Certificate2(keyFilePath, secretPassword, X509KeyStorageFlags.MachineKeySet | X509KeyStorageFlags.Exportable);
+                            //var certificate = new X509Certificate2(keyFilePath, secretPassword, X509KeyStorageFlags.MachineKeySet | X509KeyStorageFlags.Exportable);
+                            var certificate = new X509Certificate2(memoryStream.ToArray(), secretPassword, X509KeyStorageFlags.MachineKeySet | X509KeyStorageFlags.Exportable);
                             var credential = new ServiceAccountCredential(
                                    new ServiceAccountCredential.Initializer(serviceAccountEmail)
                                    {
