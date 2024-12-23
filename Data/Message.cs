@@ -22,7 +22,7 @@ namespace SKYCOM.DLManagement.Data
         public Message(string jsonPath)
         {
             #region CMF-Changes
-            MemoryStream memoryStream = BlobHelperProvider.BlobHelper.DownloadBlobToMemoryStream(jsonPath);
+            MemoryStream memoryStream = BlobHelperProvider.BlobHelper.DownloadBlobToMemoryStream(string.Empty, jsonPath);
              //Deserialize the JSON content from the memory stream
             MessageList = JsonSerializer.Deserialize<Dictionary<string, string>>(new StreamReader(memoryStream).ReadToEnd());
             #endregion
