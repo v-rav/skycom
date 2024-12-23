@@ -207,31 +207,29 @@ namespace SKYCOM.DLManagement.AzureHelper
         public  BlobClient GetBlobClient(string containerName, string blobName)
         {
             BlobContainerClient containerClient = GetBlobContainerClientUsingManagedIdentity(containerName);
-            return containerClient.GetBlobClient(blobName); // Return the BlobClient for the specified blob
+            return  containerClient.GetBlobClient(blobName); // Return the BlobClient for the specified blob            
         }
 
-        /// <summary>
-        /// checks if blob exists or not.
-        /// </summary>
-        public  bool BlobExists(BlobClient blobClient)
-        {
-            return blobClient.Exists(); // Check if the blob exists synchronously
-        }
-
-        public  string DownloadBlobContent(BlobClient blobClient)
+        public  string DownloadBlobContent(string containerName, string blobName)
         {
             try
             {
-                using (var memoryStream = new MemoryStream())
+                var blobClient = GetBlobClient(containerName, blobName);
+                if (blobClient.Exists())
                 {
-                    blobClient.DownloadTo(memoryStream); // Download the blob to the memory stream
-                    memoryStream.Position = 0; // Reset the position to read from the beginning
-
-                    using (var reader = new StreamReader(memoryStream))
+                    using (var memoryStream = new MemoryStream())
                     {
-                        return reader.ReadToEnd(); // Return the content as a string
+                        blobClient.DownloadTo(memoryStream); // Download the blob to the memory stream
+                        memoryStream.Position = 0; // Reset the position to read from the beginning
+
+                        using (var reader = new StreamReader(memoryStream))
+                        {
+                            return reader.ReadToEnd(); // Return the content as a string
+                        }
                     }
                 }
+                else
+                    return null;
             }
             catch (Exception ex)
             {

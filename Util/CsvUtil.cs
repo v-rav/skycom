@@ -50,7 +50,7 @@ namespace SKYCOM.DLManagement.Util
         }
 
 
-
+        #region CMF-Changes
         /// <summary>
         /// CSVファイルの読み込み
         /// </summary>
@@ -61,6 +61,7 @@ namespace SKYCOM.DLManagement.Util
         /// <returns>読み込みデータ</returns>
         public static List<User> ReadCsv(Dictionary<string, string> messageList,List<string> csCsvExclusion, string csvFilePath, out string message)
         {
+            //get the filename from the filepath before downloading
             if (messageList == null) throw new ArgumentNullException(nameof(messageList));
             try
             {
@@ -76,15 +77,12 @@ namespace SKYCOM.DLManagement.Util
                     message = _messageList["NoCSVFileSelecte"];
                     return null;
                 }
-                // ファイル存在チェック
+                // ファイル存在チェック               
+                var resultString = BlobHelperProvider.BlobHelper.DownloadBlobContent(CommonContainerName , csvFilePath); // Get the BlobClient for the given blob
 
-                #region CMF-Changes
-                var blobClient = BlobHelperProvider.BlobHelper.GetBlobClient(CommonContainerName, csvFilePath); // Get the BlobClient for the given blob
+
                 // Check if the blob exists
-                if (!BlobHelperProvider.BlobHelper.BlobExists(blobClient))
-                #endregion
-
-                // if (!File.Exists(csvFilePath)) --existing code
+                if (string.IsNullOrEmpty(resultString)) 
                 {
                     LogUtil.Instance.Error(_messageList["NonexistentFile"]);
                     message = _messageList["NonexistentFile"];
@@ -150,6 +148,8 @@ namespace SKYCOM.DLManagement.Util
                 LogUtil.Instance.Debug("end");
             }
         }
+        #endregion
+
 
         /// <summary>
         /// CSVデータの１行分のデータのエラーチェックを行う
