@@ -20,13 +20,13 @@
 name: Build and deploy ASP.Net Core app to an Azure Web App
 
 env:
-  AZURE_WEBAPP_NAME: skycom-app    # Set to the name of your Azure Web App
+  AZURE_WEBAPP_NAME: skycom-webapp    # Set to the name of your Azure Web App
   DOTNET_VERSION: '8'                 # .NET Core version to use
   AZURE_WEBAPP_PACKAGE_PATH: '.' # Specify the path to the publish folder
 
 on:
   push:
-    branches: [ "master" ]
+    branches: [ "main" ]
   workflow_dispatch:
 
 permissions:
@@ -88,7 +88,7 @@ jobs:
         uses: azure/webapps-deploy@v2
         with:
           app-name: ${{ env.AZURE_WEBAPP_NAME }}
-          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE_2 }}
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
           package: ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
 
 
