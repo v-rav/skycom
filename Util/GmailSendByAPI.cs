@@ -107,7 +107,7 @@ namespace SKYCOM.DLManagement.GmailAPI
                         LogUtil.Instance.Debug("Setting is ServiceAccount");
 
                         //CMF-Changes
-                        MemoryStream memoryStream = BlobHelperProvider.BlobHelper.DownloadBlobContentMemoryStream(BlobContainerName, keyFilePath); // Get the BlobClient for the given blob
+                        MemoryStream memoryStream = BlobHelperProvider.BlobHelper.DownloadBlobToMemoryStream(BlobContainerName, keyFilePath); // Get the BlobClient for the given blob
                         
                         //サービスアカウントAPI認証
                         // if (File.Exists(keyFilePath)) ---existing code

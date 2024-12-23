@@ -425,7 +425,7 @@ namespace SKYCOM.DLManagement.Rest
                 Response.Headers.Append(HEADER_DISPOSITION, string.Format(ATTACHMENT, fileName));
                 //var fs = new FileStream(filePath, FileMode.Open);
                 //Reading file from blob below
-                var ms = _azBlobStorageHelper.DownloadBlobAsync(fileName, containerName);
+                var ms = _azBlobStorageHelper.DownloadBlobToMemoryStream(containerName, fileName);
                 return new FileStreamResult(ms, MimeKit.MimeTypes.GetMimeType(fileName));
             }
             catch (Exception ex)
@@ -698,7 +698,7 @@ namespace SKYCOM.DLManagement.Rest
 
                 // Download the blob content as a memory stream
                 var containerName = _settings.Value.BlobSettings.CommonContainerName; // This should be replaced by customer with actual container name
-                Stream blobStream = _azBlobStorageHelper.DownloadBlobAsync(fileName, containerName);
+                Stream blobStream = _azBlobStorageHelper.DownloadBlobToMemoryStream(containerName, fileName);
 
                 // Reset the position of the stream to the beginning
                 blobStream.Seek(0, SeekOrigin.Begin);

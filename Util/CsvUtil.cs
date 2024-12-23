@@ -79,7 +79,7 @@ namespace SKYCOM.DLManagement.Util
                 }
                 // ファイル存在チェック
                 #region CMF-Changes
-                MemoryStream memoryStream = BlobHelperProvider.BlobHelper.DownloadBlobContentMemoryStream(CommonContainerName , csvFilePath); // Get the BlobClient for the given blob
+                MemoryStream memoryStream = BlobHelperProvider.BlobHelper.DownloadBlobToMemoryStream(CommonContainerName , csvFilePath); // Get the BlobClient for the given blob
                 // Check if the blob exists
                 if (memoryStream == null || memoryStream.Length == 0)
                 {
