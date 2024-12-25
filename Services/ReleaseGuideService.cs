@@ -23,6 +23,7 @@ using System.Linq.Dynamic.Core;
 using System.Threading;
 using System.Threading.Tasks;
 using SKYCOM.DLManagement.AzureHelper;
+using System.Net.WebSockets;
 
 namespace SKYCOM.DLManagement.Services
 {
@@ -79,16 +80,16 @@ namespace SKYCOM.DLManagement.Services
                 if (templateList.Keys.Contains(defaultTemplate))
                 {
                     #region CMF-Changes
-                    var blobClient = _azBlobStorageHelper.GetBlobClient(_settings.Value.BlobSettings.CommonContainerName, templateList[defaultTemplate]); // Get the BlobClient for the given blob
+                    var resultContent = _azBlobStorageHelper.DownloadBlobContent(_settings.Value.BlobSettings.CommonContainerName, templateList[defaultTemplate]); // Get the BlobClient for the given blob
 
-                    // Check if the blob exists
-                    if (!_azBlobStorageHelper.BlobExists(blobClient))
-                    {
+                    // if blob content is null
+                    if (string.IsNullOrEmpty( resultContent))
+                     {
                         LogUtil.Instance.Error(_message.MessageList["NonexistentFile"]);
                         return Task.FromResult(string.Empty); // Return empty if the blob does not exist
                     }
                     // Download and return the content of the blob
-                    return Task.FromResult(_azBlobStorageHelper.DownloadBlobContent(blobClient));
+                    return Task.FromResult(resultContent);
                     #endregion
 
                     #region existing changes
@@ -139,16 +140,16 @@ namespace SKYCOM.DLManagement.Services
                         if (templateList.Keys.Contains(productList[productName]))
                         {
                             #region CMF-Changes
-                            var blobClient = _azBlobStorageHelper.GetBlobClient(_settings.Value.BlobSettings.CommonContainerName, templateList[productList[productName]]); // Get the BlobClient for the given blob
+                            var resultContent = _azBlobStorageHelper.DownloadBlobContent(_settings.Value.BlobSettings.CommonContainerName, templateList[productList[productName]]); // Get the BlobClient for the given blob
 
                             // Check if the blob exists
-                            if (!_azBlobStorageHelper.BlobExists(blobClient))
+                            if (string.IsNullOrEmpty( resultContent))
                             {
                                 LogUtil.Instance.Error(_message.MessageList["NonexistentProductName"]);
                                 return Task.FromResult(string.Empty); // Return empty if the blob does not exist
                             }
                             // Download and return the content of the blob
-                            return Task.FromResult(_azBlobStorageHelper.DownloadBlobContent(blobClient));
+                            return Task.FromResult(resultContent);
                             #endregion
 
                             #region existing code

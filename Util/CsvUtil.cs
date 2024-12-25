@@ -50,7 +50,7 @@ namespace SKYCOM.DLManagement.Util
         }
 
 
-
+        #region CMF-Changes
         /// <summary>
         /// CSVファイルの読み込み
         /// </summary>
@@ -61,6 +61,7 @@ namespace SKYCOM.DLManagement.Util
         /// <returns>読み込みデータ</returns>
         public static List<User> ReadCsv(Dictionary<string, string> messageList,List<string> csCsvExclusion, string csvFilePath, out string message)
         {
+            //get the filename from the filepath before downloading
             if (messageList == null) throw new ArgumentNullException(nameof(messageList));
             try
             {
@@ -77,59 +78,104 @@ namespace SKYCOM.DLManagement.Util
                     return null;
                 }
                 // ファイル存在チェック
-
                 #region CMF-Changes
-                var blobClient = BlobHelperProvider.BlobHelper.GetBlobClient(CommonContainerName, csvFilePath); // Get the BlobClient for the given blob
+                MemoryStream memoryStream = BlobHelperProvider.BlobHelper.DownloadBlobToMemoryStream(CommonContainerName , csvFilePath); // Get the BlobClient for the given blob
                 // Check if the blob exists
-                if (!BlobHelperProvider.BlobHelper.BlobExists(blobClient))
-                #endregion
-
-                // if (!File.Exists(csvFilePath)) --existing code
+                if (memoryStream == null || memoryStream.Length == 0)
                 {
                     LogUtil.Instance.Error(_messageList["NonexistentFile"]);
                     message = _messageList["NonexistentFile"];
                     return null;
                 }
+                #endregion CMF-Changes
+
                 // CSVの解析
                 Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
-                using (var parser = new TextFieldParser(csvFilePath, Encoding.GetEncoding(ENCODING_SJIS)))
+                #region existingcode
+                //using (var parser = new TextFieldParser(csvFilePath, Encoding.GetEncoding(ENCODING_SJIS)))
+                //{
+                //    parser.TextFieldType = FieldType.Delimited;
+                //    parser.SetDelimiters(CSV_DELIMITER);
+                //    while (!parser.EndOfData)
+                //    {
+                //        var row = parser.ReadFields().ToList();
+
+                //        if(csCsvExclusion.Where(x => row.First().StartsWith(x)).ToList().Count > 0)
+                //        {
+                //            // 読み取り対象外の行のためスキップ
+                //            continue;
+                //        }
+
+                //        var userList = CreateUserFromRow(row, out message);
+                //        if (userList == null)
+                //        {
+                //            // 不正な行があったため、エラー
+                //            // ログとメソッド内で出力 
+                //            LogUtil.Instance.Error(_messageList["CSVFormatError"]);
+                //            return null;
+                //        }
+                //        foreach(var user in userList)
+                //        {
+                //            if (csvData.Where(x => x.NegotiationName == user.NegotiationName && x.MailAddress == user.MailAddress).Any())
+                //            {
+                //                //商談名の重複
+                //                message = string.Format(CultureInfo.GetCultureInfo("ja-JP"), _messageList["SameNegotiationName"], user.NegotiationName);
+                //                LogUtil.Instance.Error(string.Format(CultureInfo.GetCultureInfo("ja-JP"), _messageList["SameNegotiationName"], user.NegotiationName));
+                //                return null;
+                //            }
+                //            if(!csvData.Contains(user))
+                //            {
+                //                csvData.Add(user);
+                //            }
+                //        }
+                //    }
+                //}
+                #endregion existingcode
+
+                #region CMF-Changes
+                using (var parser = new TextFieldParser(memoryStream, Encoding.GetEncoding(ENCODING_SJIS)))
                 {
                     parser.TextFieldType = FieldType.Delimited;
                     parser.SetDelimiters(CSV_DELIMITER);
+
+                    // Step 4: Read and process each line in the CSV file
                     while (!parser.EndOfData)
                     {
                         var row = parser.ReadFields().ToList();
-                     
-                        if(csCsvExclusion.Where(x => row.First().StartsWith(x)).ToList().Count > 0)
+
+                        // Step 5: Check for exclusion based on the first field
+                        if (csCsvExclusion.Any(x => row.First().StartsWith(x)))
                         {
-                            // 読み取り対象外の行のためスキップ
-                            continue;
+                            continue; // Skip rows that match exclusion criteria
                         }
 
+                        // Step 6: Process the row to create user objects
                         var userList = CreateUserFromRow(row, out message);
                         if (userList == null)
                         {
-                            // 不正な行があったため、エラー
-                            // ログとメソッド内で出力 
                             LogUtil.Instance.Error(_messageList["CSVFormatError"]);
                             return null;
                         }
-                        foreach(var user in userList)
+
+                        // Step 7: Add users to the csvData list and check for duplicates
+                        foreach (var user in userList)
                         {
-                            if (csvData.Where(x => x.NegotiationName == user.NegotiationName && x.MailAddress == user.MailAddress).Any())
+                            if (csvData.Any(x => x.NegotiationName == user.NegotiationName && x.MailAddress == user.MailAddress))
                             {
-                                //商談名の重複
                                 message = string.Format(CultureInfo.GetCultureInfo("ja-JP"), _messageList["SameNegotiationName"], user.NegotiationName);
-                                LogUtil.Instance.Error(string.Format(CultureInfo.GetCultureInfo("ja-JP"), _messageList["SameNegotiationName"], user.NegotiationName));
+                                LogUtil.Instance.Error(message);
                                 return null;
                             }
-                            if(!csvData.Contains(user))
+
+                            if (!csvData.Contains(user))
                             {
                                 csvData.Add(user);
                             }
                         }
                     }
                 }
+                #endregion CMF-Changes
+
                 if (csvData.Count == 0)
                 {
                     // 有効行が1行もない場合
@@ -150,6 +196,8 @@ namespace SKYCOM.DLManagement.Util
                 LogUtil.Instance.Debug("end");
             }
         }
+        #endregion
+
 
         /// <summary>
         /// CSVデータの１行分のデータのエラーチェックを行う

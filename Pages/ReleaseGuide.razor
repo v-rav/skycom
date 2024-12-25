@@ -700,7 +700,8 @@
             //CSVファイル解析
             string message;
             LogUtil.Instance.Debug($"Selected csv file is {FileSelect.SelectFileFullPath}.");
-            csvlists = await _service.SelectCsv(FileSelect.SelectFileFullPath, out message);
+           // csvlists = await _service.SelectCsv(FileSelect.SelectFileFullPath, out message); ---existing code
+            csvlists = await _service.SelectCsv(FileSelect.SelectFileName, out message);
             dlURLClass = (productInfos.Where(x => !string.IsNullOrEmpty(x.FileName)).Count() >= 1 && csvlists != null) ? MIDDLE_CLASS : MIDDLE_DISABLED_CLASS;
             if (csvlists == null)
             {
