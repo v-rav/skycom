@@ -140,10 +140,10 @@ namespace SKYCOM.DLManagement.AzureHelper
                 }
 
                 // Get a reference to the blob (file)
-                // BlobClient blobClient = containerClient.GetBlobClient(blobName);
+                BlobClient blobClient = containerClient.GetBlobClient(blobName);
 
                 //Local testing
-                var blobClient = AccessBlobWithSasTocken(blobName);
+               // var blobClient = AccessBlobWithSasTocken(blobName);
                 if (blobClient.Exists())
                 {
                     // Create a MemoryStream to hold the downloaded content
@@ -179,10 +179,10 @@ namespace SKYCOM.DLManagement.AzureHelper
             try
             {
 
-               // BlobContainerClient containerClient = GetBlobContainerClientUsingManagedIdentity(containerName);
-               // var blobClient = containerClient.GetBlobClient(blobName); // Return the BlobClient for the specified blob           
+                BlobContainerClient containerClient = GetBlobContainerClientUsingManagedIdentity(containerName);
+                var blobClient = containerClient.GetBlobClient(blobName); // Return the BlobClient for the specified blob           
                 //Local testing
-                var blobClient = AccessBlobWithSasTocken(blobName);
+               // var blobClient = AccessBlobWithSasTocken(blobName);
                 if (blobClient.Exists())
                 {
                     using (var memoryStream = new MemoryStream())
