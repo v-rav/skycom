@@ -207,7 +207,7 @@
                 //ひとつ上のディレクトリへいかない
                 return;
             }
-            var serverFileInfo = new ServerFileInfo() { FullPath = Directory.GetParent(currentDirectory).FullName };
+            var serverFileInfo = new ServerFileInfo() { FullPath = initialDirectory };
             serverFileInfos = await _service.GetServerFileInfos(serverFileInfo);
             currentDirectory = serverFileInfo.FullPath;
         }

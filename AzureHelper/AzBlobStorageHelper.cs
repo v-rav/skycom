@@ -237,9 +237,10 @@ namespace SKYCOM.DLManagement.AzureHelper
             }
         }
 
-        public List<BlobFileInfo> GetBlobList(string containerName = "")
+        public List<ServerFileInfo> GetBlobList(string containerName = "skycomblobstorage")
         {
-            var blobsList = new List<BlobFileInfo>();
+            
+            var blobsList = new List<ServerFileInfo>();
 
             // Managed Identity Blob Service URI              
             if (string.IsNullOrEmpty(storageAccountName))
@@ -250,20 +251,40 @@ namespace SKYCOM.DLManagement.AzureHelper
             var credential = new DefaultAzureCredential();
 
             BlobServiceClient blobServiceClient = new BlobServiceClient(new Uri(blobServiceUri), credential);
-
-            foreach (BlobContainerItem containerItem in blobServiceClient.GetBlobContainers())
+            if (containerName == storageAccountName) //List all containers if the full path is root directory
+            {
+                foreach (BlobContainerItem containerItem in blobServiceClient.GetBlobContainers())
+                {
+                    blobsList.Add(new ServerFileInfo() { FileName = containerItem.Name, IsFile = false, FullPath = containerItem.Name, Attributes = FileAttributes.Directory });
+                }
+                return blobsList;
+            }
+            else //List the folders and files of the current container/directory
             {
                 // Create a new BlobClient using the SAS URI
-                var sasBlobContainerClient = AccessBlobContainerClientWithSasTocken(containerItem.Name);              
+                var sasBlobContainerClient = AccessBlobContainerClientWithSasTocken(containerName);
                 var blobs = sasBlobContainerClient.GetBlobs();
                 foreach (var blobItem in blobs)
                 {
-                    blobsList.Add(new BlobFileInfo { ContainerName = containerItem.Name,
-                                                     FileName= blobItem.Name,
-                                                     FileSize = blobItem.Properties.ContentLength.Value,
-                                                     Date = blobItem.Properties.LastModified.Value.UtcDateTime});
+                    // Check if the blob is a directory (virtual folder) or file
+                    bool isFile = !blobItem.Name.EndsWith("/"); // Treat "folders" as blobs with a trailing "/"
+
+                    blobsList.Add(new ServerFileInfo
+                    {
+
+                        FileName = blobItem.Name,
+                        FileSize = (int)blobItem.Properties.ContentLength,
+                        Date = blobItem.Properties.LastModified.Value.UtcDateTime,
+                        IsFile = isFile,
+                        Attributes = FileAttributes.Normal,
+                        FullPath = containerName
+                    });
                 }
             }
+            //foreach (BlobContainerItem containerItem in blobServiceClient.GetBlobContainers())
+            //{ 
+               
+            //}
 
             return blobsList;
         }
