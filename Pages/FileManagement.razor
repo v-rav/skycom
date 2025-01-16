@@ -10,6 +10,7 @@
 
 @page "/FileManagement"
 
+@using SKYCOM.DLManagement.AzureHelper
 @using SKYCOM.DLManagement.Data
 @using SKYCOM.DLManagement.Services
 @using SKYCOM.DLManagement.Util
@@ -22,6 +23,7 @@
 @inject IOptions<Settings> _settings
 @inject IJSRuntime JsRuntime
 @inject FileManagementService _service
+@inject AzBlobStorageHelper AzBlobStorageHelper
 @inject Blazored.LocalStorage.ILocalStorageService localStorage
 
 
@@ -151,7 +153,7 @@
             throw;
         }
         LogUtil.Instance.Debug($"Current directory {initialDirectory}");
-        serverFileInfos = await _service.GetServerFileInfos(new ServerFileInfo() { FullPath = initialDirectory });
+        serverFileInfos = await _service.GetBlobFileInfos(initialDirectory);
         currentDirectory = initialDirectory;
         LogUtil.Instance.Trace("end");
     }
@@ -280,7 +282,8 @@
         try
         {
             if (uploadClass == MIDDLE_DISABLED_CLASS) return;
-            // 上書き確認
+
+            // Overwrite check
             if (serverFileInfos.Where(x => x.FileName == selectFileName).Any())
             {
                 LogUtil.Instance.Debug($"I found a file with the same name.{selectFileName}");
@@ -291,26 +294,43 @@
                 }
                 if (!Confirm.Result)
                 {
-                    // いいえが押下された場合はアップロードしない
+                    // If 'No' is pressed, do not upload
                     return;
                 }
             }
 
-
             Uploading.Open(_message.MessageList["Uploading"]);
             await Task.Delay(500);
+
+            // Get the file data from the JS runtime (assumes a file input element is used in the form)
             var response = await JsRuntime.InvokeAsync<object>("fileManagementJsFunctions.formUpload", new object[] { "uploadForm" }).ConfigureAwait(false);
             Uploading.Close();
+
+            // Deserialize the response
             var result = JsonSerializer.Deserialize<Response>(response.ToString().Replace("\\", "").Replace("\"{", "{").Replace("}\"", "}"));
             if (result.StatusCode != 201)
             {
                 ErrorDisp.Open(string.Format(_message.MessageList["UploadFailed"], result.Body.message));
                 return;
             }
+
+            // Now upload the file to Azure Blob Storage using AzBlobStorageHelper            
+            
+            var filePath = Path.Combine(currentDirectory, selectFileName);
+
+            // Prepare the file stream
+            using (var fileStream = File.OpenRead(filePath))
+            {
+                // Upload the file to Azure Blob Storage
+                AzBlobStorageHelper.UploadFileToAzure(fileStream, selectFileName, "skycomcontainer-1");
+            }
+
+            // Update the server file info
             serverFileInfos = await _service.GetServerFileInfos(new ServerFileInfo() { FullPath = currentDirectory });
             selectFileName = string.Empty;
             uploadClass = MIDDLE_DISABLED_CLASS;
             await InvokeAsync(() => StateHasChanged());
+
             if (await localStorage.ContainKeyAsync("IsEdit"))
             {
                 await localStorage.RemoveItemAsync("IsEdit");
@@ -322,6 +342,7 @@
         }
     }
 
+    
     #region REST I/Fレスポンス解析クラス
     private class Response
     {

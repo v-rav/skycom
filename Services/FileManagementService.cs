@@ -6,6 +6,9 @@
 // EandM
 //=============================================================================
 
+using Azure.Storage.Blobs;
+using Microsoft.Extensions.Options;
+using SKYCOM.DLManagement.AzureHelper;
 using SKYCOM.DLManagement.Data;
 using SKYCOM.DLManagement.Util;
 using System;
@@ -28,12 +31,19 @@ namespace SKYCOM.DLManagement.Services
         Downloaded = 1,
     }
 
+    
+
     public class FileManagementService
     {
         private readonly Message _message;
-        public FileManagementService(Message message)
+        private readonly AzBlobStorageHelper _blobStorageHelper;
+
+
+        // Constructor that accepts AzBlobStorageHelper dependency
+        public FileManagementService(Message message, AzBlobStorageHelper blobStorageHelper)
         {
             _message = message;
+            _blobStorageHelper = blobStorageHelper;
         }
 
         /// <summary>
@@ -68,6 +78,66 @@ namespace SKYCOM.DLManagement.Services
                     return Task.FromResult(serverFiles.ToList());
                 }
                 return Task.FromResult(new List<ServerFileInfo>());
+            }
+            finally
+            {
+                LogUtil.Instance.Trace("end");
+            }
+        }
+        
+
+        public async Task<List<ServerFileInfo>> GetBlobFileInfos(string containerName)
+        {
+            
+            
+
+            try
+            {
+                LogUtil.Instance.Trace("start");
+
+                // Get BlobContainerClient for the container
+
+                var containerClient = _blobStorageHelper.GetBlobContainerClient(containerName); // Get container client
+
+                if (!await containerClient.ExistsAsync())
+                {
+                    // If the container doesn't exist, return an empty list
+                    LogUtil.Instance.Warn($"Blob container not found: {containerName}");
+                    return new List<ServerFileInfo>();
+                }
+
+                var blobInfos = new List<ServerFileInfo>();
+
+                // List all blobs (files and folders) in the container
+                await foreach (var blobItem in containerClient.GetBlobsAsync())
+                {
+                    // Check if the blob is a directory (virtual folder) or file
+                    bool isFile = !blobItem.Name.EndsWith("/"); // Treat "folders" as blobs with a trailing "/"
+
+                    var blobInfo = new ServerFileInfo
+                    {
+                        FileName = blobItem.Name,
+                        FullPath = blobItem.Name, // Full path of the blob
+                        IsFile = isFile,
+                        FileSize = isFile ? (int)blobItem.Properties.ContentLength : 0, // Files have size, directories don't
+                        Date = blobItem.Properties.LastModified?.DateTime ?? DateTime.MinValue, // Convert DateTimeOffset to DateTime
+                        Attributes = FileAttributes.Normal // No direct equivalent in Blob Storage
+                    };
+
+
+                    // Add to the list if it's a file or if you want to include folders
+                    if (isFile || !isFile) // You can modify this condition if you want to include virtual directories as well
+                    {
+                        blobInfos.Add(blobInfo);
+                    }
+                }
+
+                return blobInfos.OrderBy(file => file.FileName).ToList();
+            }
+            catch (Exception ex)
+            {
+                LogUtil.Instance.Warn($"Error occurred while fetching server file infos from Azure Blob Storage: {ex.Message}", ex);
+                return new List<ServerFileInfo>();
             }
             finally
             {
