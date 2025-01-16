@@ -2,6 +2,7 @@ namespace SKYCOM.DLManagement.AzureHelper
 {
     using Azure.Identity;
     using Azure.Storage.Blobs;
+    using Azure.Storage.Blobs.Models;
     using Azure.Storage.Sas;
     using Humanizer.Configuration;
     using Microsoft.Extensions.Configuration;
@@ -13,6 +14,8 @@ namespace SKYCOM.DLManagement.AzureHelper
     using System.Collections.Generic;
     using System.Configuration;
     using System.IO;
+    using System.Linq;
+    using System.Threading.Tasks;
 
     /// <summary>
     /// This is created by - CMF for Appservice migration
@@ -74,7 +77,7 @@ namespace SKYCOM.DLManagement.AzureHelper
 
             // Create a SAS token with read permissions (you can customize this)
             var sasToken = blobClient.GenerateSasUri(
-                BlobSasPermissions.Read, // Permissions: Read
+                 BlobSasPermissions.All, // Required Permissions, // Permissions: Read
                 expirationTime // Expiration time
             );
 
@@ -84,6 +87,31 @@ namespace SKYCOM.DLManagement.AzureHelper
 
             // Return the blob url with SAS token 
             return sasBlobClient;
+        }
+
+        /// <summary>
+        /// Access blob with sas token to access the blob
+        /// </summary>
+        /// <param name="blobName"></param>
+        /// <returns></returns>
+        private BlobContainerClient AccessBlobContainerClientWithSasTocken(string containerName)
+        {
+            var blobServiceClient = new BlobServiceClient(settings.Value.BlobSettings.ConnectionString);
+            var blobContainerClient = blobServiceClient.GetBlobContainerClient(containerName);
+            // Specify the expiration time of the SAS token
+            DateTimeOffset expirationTime = DateTimeOffset.UtcNow.AddHours(1); // token expires in 1 hour
+
+            // Create a SAS token with read permissions (you can customize this)
+            var sasToken = blobContainerClient.GenerateSasUri(
+                BlobContainerSasPermissions.All, // Permissions: Read
+                expirationTime // Expiration time
+            );
+
+            // Create a new BlobClient using the SAS URI
+            var sasBlobContainerClient = new BlobContainerClient(sasToken);
+
+            // Return the blob url with SAS token 
+            return sasBlobContainerClient;
         }
         #endregion
 
@@ -108,12 +136,17 @@ namespace SKYCOM.DLManagement.AzureHelper
                 containerClient.CreateIfNotExists();
 
                 // Create a blob client for the file
-                BlobClient blobClient = containerClient.GetBlobClient(fileName);
+                //BlobClient blobClient = containerClient.GetBlobClient(fileName);
+
+                //Local testing - use sas access token
+                var blobClient = AccessBlobWithSasTocken(fileName);
 
                 // Upload the file stream to Azure Blob Storage
                 using (memoryStream)
                 {
-                    blobClient.Upload(memoryStream, overwrite: true);
+                    // Reset the memory stream position to the beginning before using it
+                    memoryStream.Position = 0;
+                    blobClient.UploadAsync(memoryStream, overwrite: true);
                 }
 
             }
@@ -140,10 +173,10 @@ namespace SKYCOM.DLManagement.AzureHelper
                 }
 
                 // Get a reference to the blob (file)
-                BlobClient blobClient = containerClient.GetBlobClient(blobName);
+                //BlobClient blobClient = containerClient.GetBlobClient(blobName);
 
                 //Local testing
-               // var blobClient = AccessBlobWithSasTocken(blobName);
+                var blobClient = AccessBlobWithSasTocken(blobName);
                 if (blobClient.Exists())
                 {
                     // Create a MemoryStream to hold the downloaded content
@@ -179,10 +212,10 @@ namespace SKYCOM.DLManagement.AzureHelper
             try
             {
 
-                BlobContainerClient containerClient = GetBlobContainerClientUsingManagedIdentity(containerName);
-                var blobClient = containerClient.GetBlobClient(blobName); // Return the BlobClient for the specified blob           
+                //BlobContainerClient containerClient = GetBlobContainerClientUsingManagedIdentity(containerName);
+                //var blobClient = containerClient.GetBlobClient(blobName); // Return the BlobClient for the specified blob           
                 //Local testing
-               // var blobClient = AccessBlobWithSasTocken(blobName);
+                var blobClient = AccessBlobWithSasTocken(blobName);
                 if (blobClient.Exists())
                 {
                     using (var memoryStream = new MemoryStream())
@@ -202,6 +235,37 @@ namespace SKYCOM.DLManagement.AzureHelper
             {
                 throw new Exception(string.Concat(Constants.BlobConstants.ConnectionFailedErrorMessage, ex.Message));
             }
+        }
+
+        public List<BlobFileInfo> GetBlobList(string containerName = "")
+        {
+            var blobsList = new List<BlobFileInfo>();
+
+            // Managed Identity Blob Service URI              
+            if (string.IsNullOrEmpty(storageAccountName))
+            {
+                throw new KeyNotFoundException(Constants.BlobConstants.StorageNameKeyNotfoundErrorMessage);
+            }
+            string blobServiceUri = $"https://{storageAccountName}.blob.core.windows.net";
+            var credential = new DefaultAzureCredential();
+
+            BlobServiceClient blobServiceClient = new BlobServiceClient(new Uri(blobServiceUri), credential);
+
+            foreach (BlobContainerItem containerItem in blobServiceClient.GetBlobContainers())
+            {
+                // Create a new BlobClient using the SAS URI
+                var sasBlobContainerClient = AccessBlobContainerClientWithSasTocken(containerItem.Name);              
+                var blobs = sasBlobContainerClient.GetBlobs();
+                foreach (var blobItem in blobs)
+                {
+                    blobsList.Add(new BlobFileInfo { ContainerName = containerItem.Name,
+                                                     FileName= blobItem.Name,
+                                                     FileSize = blobItem.Properties.ContentLength.Value,
+                                                     Date = blobItem.Properties.LastModified.Value.UtcDateTime});
+                }
+            }
+
+            return blobsList;
         }
         #endregion
     }

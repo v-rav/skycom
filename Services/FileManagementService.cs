@@ -6,6 +6,9 @@
 // EandM
 //=============================================================================
 
+using Azure.Storage.Blobs.Models;
+using MimeKit;
+using SKYCOM.DLManagement.AzureHelper;
 using SKYCOM.DLManagement.Data;
 using SKYCOM.DLManagement.Util;
 using System;
@@ -41,12 +44,14 @@ namespace SKYCOM.DLManagement.Services
         /// </summary>
         /// <param name="serverFileInfo">ルートディレクトリ情報</param>
         /// <returns></returns>
-        public Task<List<ServerFileInfo>> GetServerFileInfos(ServerFileInfo serverFileInfo)
+        public Task<List<ServerFileInfo>> GetServerFileInfos_Old(ServerFileInfo serverFileInfo)
         {
-            if (serverFileInfo == null) throw new ArgumentNullException(nameof(serverFileInfo));
-
+            //Get Blobs List
+          
+            
             try
-            {
+            {                
+                if (serverFileInfo == null) throw new ArgumentNullException(nameof(serverFileInfo));
                 LogUtil.Instance.Trace("start");
                 if (!Directory.Exists(serverFileInfo.FullPath))
                 {
@@ -74,6 +79,31 @@ namespace SKYCOM.DLManagement.Services
                 LogUtil.Instance.Trace("end");
             }
         }
+
+
+        /// <summary>
+        /// Return the list of blobs along with container name from the azure storage. CMF - Changes
+        /// </summary>
+        /// <param name="serverFileInfo"></param>
+        /// <returns></returns>
+        /// <exception cref="ArgumentNullException"></exception>
+        public Task<List<ServerFileInfo>> GetServerFileInfos(ServerFileInfo serverFileInfo)
+        {
+            //Get Blobs List
+            try
+            {
+                var blobsList = BlobHelperProvider.BlobHelper.GetBlobList();
+                var serverfiles = new List<ServerFileInfo>();
+                foreach (var blob in blobsList) {
+                    serverfiles.Add(new ServerFileInfo { FileName = blob.FileName, FullPath = blob.ContainerName, FileSize = blob.FileSize, Date = blob.Date });
+                        }
+                return Task.FromResult(serverfiles);               
+            }
+            finally
+            {
+                LogUtil.Instance.Trace("end");
+            }
+        }       
 
         /// <summary>
         /// フォルダへのアクセス権チェック
