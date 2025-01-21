@@ -89,6 +89,7 @@ namespace SKYCOM.DLManagement.Services
         /// <exception cref="ArgumentNullException"></exception>
         public Task<List<ServerFileInfo>> GetServerFileInfos(ServerFileInfo serverFileInfo)
         {
+            LogUtil.Instance.Trace("start");
             //Get Blobs List
             try
             {

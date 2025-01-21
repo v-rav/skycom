@@ -183,14 +183,13 @@ namespace SKYCOM.DLManagement.Rest
                 {
                     return ErrorStatus(400, "DL001", _message.MessageList["NonexistentUploadFile"]);
                 }
-                //if (!Request.Form.Keys.Contains(UPLOAD_PATH)) //Upload path should be replaced by the blob container name  as the files are uploaded into blob storage
-                //{
-                //    return ErrorStatus(400, "DL002", _message.MessageList["NonexistentUploadPathKey"]);
-                //}
+                var BlobContainerName = _settings.Value.BlobSettings.CommonContainerName;
 
-                // Setting the upload path as blob container
-                //Customer will replace this containerName by actual blob container name on production
-                var BlobContainerName = _settings.Value.BlobSettings.CommonContainerName; 
+                if (Request.Form.Keys.Contains(UPLOAD_PATH)) //Upload path will have the selected blob container. If it doesn't have value, default container will be assigned 
+                {     
+                    // Setting the upload path as blob container                    
+                    BlobContainerName = Request.Form[UPLOAD_PATH].ToString(); // _settings.Value.BlobSettings.CommonContainerName;
+                }
 
                 if (!Request.Form.Keys.Contains(FILE_SIZE))
                 {

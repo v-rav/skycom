@@ -64,10 +64,8 @@ namespace SKYCOM.DLManagement.AzureHelper
         /// </summary>
         /// <param name="blobName"></param>
         /// <returns></returns>
-        private BlobClient AccessBlobWithSasTocken(string blobName)
-        {
-            //Client has to decide which container name
-            var containerName = settings.Value.BlobSettings.CommonContainerName;
+        private BlobClient AccessBlobWithSasTocken(string blobName, string containerName)
+        {           
             //Second option
             var blobServiceClient = new BlobServiceClient(settings.Value.BlobSettings.ConnectionString);
             var blobContainerClient = blobServiceClient.GetBlobContainerClient(containerName);
@@ -139,7 +137,7 @@ namespace SKYCOM.DLManagement.AzureHelper
                 //BlobClient blobClient = containerClient.GetBlobClient(fileName);
 
                 //Local testing - use sas access token
-                var blobClient = AccessBlobWithSasTocken(fileName);
+                var blobClient = AccessBlobWithSasTocken(fileName,containerName);
 
                 // Upload the file stream to Azure Blob Storage
                 using (memoryStream)
@@ -176,7 +174,7 @@ namespace SKYCOM.DLManagement.AzureHelper
                 //BlobClient blobClient = containerClient.GetBlobClient(blobName);
 
                 //Local testing
-                var blobClient = AccessBlobWithSasTocken(blobName);
+                var blobClient = AccessBlobWithSasTocken(blobName, containerName);
                 if (blobClient.Exists())
                 {
                     // Create a MemoryStream to hold the downloaded content
@@ -215,7 +213,7 @@ namespace SKYCOM.DLManagement.AzureHelper
                 //BlobContainerClient containerClient = GetBlobContainerClientUsingManagedIdentity(containerName);
                 //var blobClient = containerClient.GetBlobClient(blobName); // Return the BlobClient for the specified blob           
                 //Local testing
-                var blobClient = AccessBlobWithSasTocken(blobName);
+                var blobClient = AccessBlobWithSasTocken(blobName, containerName);
                 if (blobClient.Exists())
                 {
                     using (var memoryStream = new MemoryStream())
