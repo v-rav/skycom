@@ -53,7 +53,7 @@ namespace SKYCOM.DLManagement.Rest
         /// <param name="context"></param>
         /// <param name="settings"></param>
         /// <param name="message"></param>
-        public FileController(DbAccess context, IOptions<Settings> settings, Message message,AzBlobStorageHelper azBlobStorageHelper)
+        public FileController(DbAccess context, IOptions<Settings> settings, Message message, AzBlobStorageHelper azBlobStorageHelper)
         {
             _context = context;
             _settings = settings;
@@ -178,6 +178,10 @@ namespace SKYCOM.DLManagement.Rest
             LogUtil.Instance.Info("start");
             try
             {
+                //For testing purpose, trying to get the list of products from mysql. Will be removed once tested MI of azure mysql
+                List<Product> products = _context.Product.ToList();
+
+
                 // リクエストのバリデーションチェック
                 if (file == null || file.Length == 0)
                 {
@@ -186,7 +190,7 @@ namespace SKYCOM.DLManagement.Rest
                 var BlobContainerName = _settings.Value.BlobSettings.CommonContainerName;
 
                 if (Request.Form.Keys.Contains(UPLOAD_PATH)) //Upload path will have the selected blob container. If it doesn't have value, default container will be assigned 
-                {     
+                {
                     // Setting the upload path as blob container                    
                     BlobContainerName = Request.Form[UPLOAD_PATH].ToString(); // _settings.Value.BlobSettings.CommonContainerName;
                 }
@@ -377,7 +381,7 @@ namespace SKYCOM.DLManagement.Rest
                 }
 
                 // DBレコードチェック
-                 var filePath = string.Empty;
+                var filePath = string.Empty;
                 _context.Database.SetCommandTimeout(transactionTimeout);
                 using (var transaction = await _context.Database.BeginTransactionAsync(System.Data.IsolationLevel.ReadUncommitted).ConfigureAwait(false))
                 {
@@ -393,7 +397,7 @@ namespace SKYCOM.DLManagement.Rest
                     }
 
 
-                    filePath = product.ProductFilePath; 
+                    filePath = product.ProductFilePath;
 
                     //Directory existance check done in AzBlobStorageHelper.cs page
                     //// ファイルの存在チェック
@@ -703,7 +707,7 @@ namespace SKYCOM.DLManagement.Rest
                 blobStream.Seek(0, SeekOrigin.Begin);
 
                 // Return the blob content as a downloadable file
-                return File(blobStream, "text/csv", fileName);                
+                return File(blobStream, "text/csv", fileName);
             }
             catch (Exception ex)
             {

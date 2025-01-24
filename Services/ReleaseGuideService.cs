@@ -24,6 +24,8 @@ using System.Threading;
 using System.Threading.Tasks;
 using SKYCOM.DLManagement.AzureHelper;
 using System.Net.WebSockets;
+using log4net;
+using Org.BouncyCastle.Asn1.Ocsp;
 
 namespace SKYCOM.DLManagement.Services
 {
@@ -55,6 +57,7 @@ namespace SKYCOM.DLManagement.Services
             _message = message;
             _azBlobStorageHelper = azBlobStorageHelper;
         }
+        
 
         /// <summary>
         /// 送付状の初期値
@@ -64,6 +67,10 @@ namespace SKYCOM.DLManagement.Services
         {
             try
             {
+                //For testing purpose, trying to get the list of products from mysql. Will be removed once tested MI of azure mysql
+                List<Product> products = _context.Product.ToList();
+
+
                 LogUtil.Instance.Trace("start");
                 var templateList = new Dictionary<string, string>();
                 var defaultTemplate = string.Empty;

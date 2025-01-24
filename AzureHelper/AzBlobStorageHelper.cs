@@ -31,7 +31,23 @@ namespace SKYCOM.DLManagement.AzureHelper
             this.settings = settings;
             storageAccountName = settings.Value.BlobSettings.StorageAccountName;
         }
+
         #region private methods
+
+        private BlobClient GetBlobClient(string containerName, string blobName)
+        {
+            // Retrieve connection string from settings (if available)
+            if (!string.IsNullOrEmpty(settings.Value.BlobSettings.ConnectionString))
+            {              
+                // If no connection string, use Managed Identity for authentication
+                return AccessBlobWithSasTocken(blobName, containerName);
+            }
+            else
+            {
+                BlobContainerClient containerClient = GetBlobContainerClientUsingManagedIdentity(containerName);
+                return containerClient.GetBlobClient(blobName);
+            }
+        }
 
         private BlobContainerClient GetBlobContainerClientUsingManagedIdentity(string containerName)
         {
@@ -65,7 +81,7 @@ namespace SKYCOM.DLManagement.AzureHelper
         /// <param name="blobName"></param>
         /// <returns></returns>
         private BlobClient AccessBlobWithSasTocken(string blobName, string containerName)
-        {           
+        {
             //Second option
             var blobServiceClient = new BlobServiceClient(settings.Value.BlobSettings.ConnectionString);
             var blobContainerClient = blobServiceClient.GetBlobContainerClient(containerName);
@@ -101,7 +117,7 @@ namespace SKYCOM.DLManagement.AzureHelper
 
             // Create a SAS token with read permissions (you can customize this)
             var sasToken = blobContainerClient.GenerateSasUri(
-                BlobContainerSasPermissions.All, // Permissions: Read
+                BlobContainerSasPermissions.All | BlobContainerSasPermissions.Read | BlobContainerSasPermissions.Filter | BlobContainerSasPermissions.Create,// Permissions: Read
                 expirationTime // Expiration time
             );
 
@@ -111,6 +127,8 @@ namespace SKYCOM.DLManagement.AzureHelper
             // Return the blob url with SAS token 
             return sasBlobContainerClient;
         }
+        
+
         #endregion
 
         #region public methods
@@ -127,18 +145,19 @@ namespace SKYCOM.DLManagement.AzureHelper
         {
             try
             {
-                //Getting the blob client from azure blob storage using managed Identity
-                BlobContainerClient containerClient = GetBlobContainerClientUsingManagedIdentity(containerName);
+                ////Getting the blob client from azure blob storage using managed Identity
+                //BlobContainerClient containerClient = GetBlobContainerClient(containerName);
 
-                // Create the container if it doesn't exist
-                containerClient.CreateIfNotExists();
+                //// Create the container if it doesn't exist
+                //// containerClient.CreateIfNotExists();
 
-                // Create a blob client for the file
+                //// Create a blob client for the file
                 //BlobClient blobClient = containerClient.GetBlobClient(fileName);
 
-                //Local testing - use sas access token
-                var blobClient = AccessBlobWithSasTocken(fileName,containerName);
+                ////Local testing - use sas access token
+                ////var blobClient = AccessBlobWithSasTocken(fileName,containerName);
 
+                var blobClient = GetBlobClient(containerName, fileName);
                 // Upload the file stream to Azure Blob Storage
                 using (memoryStream)
                 {
@@ -165,16 +184,16 @@ namespace SKYCOM.DLManagement.AzureHelper
                 }
                 // Get a reference to the container
                 BlobContainerClient containerClient = GetBlobContainerClientUsingManagedIdentity(containerName);
-                if (!containerClient.Exists())
+                if (containerClient == null)
                 {
                     throw new Exception($"AzBlobStorageHelper : DownloadblobAsync - Container not exists  {containerName}");
                 }
 
                 // Get a reference to the blob (file)
-                //BlobClient blobClient = containerClient.GetBlobClient(blobName);
+                BlobClient blobClient = containerClient.GetBlobClient(blobName);
 
                 //Local testing
-                var blobClient = AccessBlobWithSasTocken(blobName, containerName);
+                //var blobClient = AccessBlobWithSasTocken(blobName, containerName);
                 if (blobClient.Exists())
                 {
                     // Create a MemoryStream to hold the downloaded content
@@ -210,10 +229,10 @@ namespace SKYCOM.DLManagement.AzureHelper
             try
             {
 
-                //BlobContainerClient containerClient = GetBlobContainerClientUsingManagedIdentity(containerName);
-                //var blobClient = containerClient.GetBlobClient(blobName); // Return the BlobClient for the specified blob           
+                BlobContainerClient containerClient = GetBlobContainerClientUsingManagedIdentity(containerName);
+                var blobClient = containerClient.GetBlobClient(blobName); // Return the BlobClient for the specified blob           
                 //Local testing
-                var blobClient = AccessBlobWithSasTocken(blobName, containerName);
+               //var blobClient = AccessBlobWithSasTocken(blobName, containerName);
                 if (blobClient.Exists())
                 {
                     using (var memoryStream = new MemoryStream())
@@ -260,7 +279,7 @@ namespace SKYCOM.DLManagement.AzureHelper
             else //List the folders and files of the current container/directory
             {
                 // Create a new BlobClient using the SAS URI
-                var sasBlobContainerClient = AccessBlobContainerClientWithSasTocken(containerName);
+                var sasBlobContainerClient = GetBlobContainerClientUsingManagedIdentity(containerName);
                 var blobs = sasBlobContainerClient.GetBlobs();
                 foreach (var blobItem in blobs)
                 {
@@ -279,10 +298,6 @@ namespace SKYCOM.DLManagement.AzureHelper
                     });
                 }
             }
-            //foreach (BlobContainerItem containerItem in blobServiceClient.GetBlobContainers())
-            //{ 
-               
-            //}
 
             return blobsList;
         }

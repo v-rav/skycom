@@ -6,6 +6,7 @@
 // EandM
 //=============================================================================
 
+using Azure.Identity;
 using Blazored.LocalStorage;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -16,12 +17,14 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using MySql.Data.MySqlClient;
 using SKYCOM.DLManagement.AzureHelper;
 using SKYCOM.DLManagement.Data;
 using SKYCOM.DLManagement.Entity;
 using SKYCOM.DLManagement.Services;
 using System;
 using static Org.BouncyCastle.Math.EC.ECCurve;
+
 
 namespace SKYCOM.DLManagement
 {
@@ -66,9 +69,36 @@ namespace SKYCOM.DLManagement
             services.AddSingleton<Message>(new Message(Configuration.GetSection("MessagePath").Value));
 
             services.AddMvc(options => options.EnableEndpointRouting = false);
+
+            //Old code
             //services.AddDbContext<DbAccess>(options => options.UseMySql(Configuration.GetConnectionString("DefaultConnection")));
+
+            ///CMF - Changes
+            //Establish the connection to azure mysql using connection string
             var connectionString = Configuration.GetConnectionString("DefaultConnection");
             services.AddDbContext<DbAccess>(options => options.UseMySql(connectionString, new MySqlServerVersion(new Version(8, 4, 3))));
+
+
+            //Establish connection to azure mysql using manged identity
+            //services.AddDbContext<DbAccess>(options =>
+            //{
+            //    var azureTokenCredential = new DefaultAzureCredential();
+            //    var accessToken = azureTokenCredential.GetToken(
+            //        new Azure.Core.TokenRequestContext(new[] { "https://ossrdbms-aad.mysql.database.azure.com/.default" })
+            //    );
+
+            //    var builder = new MySqlConnectionStringBuilder
+            //    {
+            //        Server = Configuration.GetConnectionString("Server"),
+            //        Database = Configuration.GetConnectionString("Database"),
+            //        UserID = Configuration.GetConnectionString("User"),
+            //        Password = accessToken.Token,
+            //        SslMode = MySqlSslMode.Required,
+            //    };
+
+            //    options.UseMySql(builder.ConnectionString, new MySqlServerVersion(new Version(8, 0, 30)));
+            //});
+
             services.AddRazorPages();
             services.AddServerSideBlazor();
             services.AddScoped<FileManagementService>();
