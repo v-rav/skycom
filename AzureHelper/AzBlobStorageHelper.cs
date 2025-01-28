@@ -35,7 +35,7 @@ namespace SKYCOM.DLManagement.AzureHelper
 
         #region private methods
 
-       
+
         /// <summary>
         /// Gets a BlobContainerClient using either Managed Identity or a connection string.
         /// </summary>
@@ -236,11 +236,17 @@ namespace SKYCOM.DLManagement.AzureHelper
             {
                 throw new Exception(string.Concat(Constants.BlobConstants.ConnectionFailedErrorMessage, ex.Message));
             }
-        }    
+        }
 
-        public async Task<List<ServerFileInfo>> GetBlobList(string containerName = "skycomblobstorage")
-        {            
+        public async Task<List<ServerFileInfo>> GetBlobList(string containerName)
+        {
             var blobsList = new List<ServerFileInfo>();
+
+            //For the first time, load all the containers of the storageaccount, so assigning the containername to storage account.
+            if (string.IsNullOrEmpty(containerName))
+            {
+                containerName = storageAccountName;
+            }
 
             // Managed Identity Blob Service URI              
             if (string.IsNullOrEmpty(storageAccountName))
@@ -265,7 +271,7 @@ namespace SKYCOM.DLManagement.AzureHelper
                 var blobContainerClient = GetBlobContainerClient(containerName);
                 // List all blobs (files and folders) in the container
                 await foreach (var blobItem in blobContainerClient.GetBlobsAsync())
-                {                  
+                {
                     // Check if the blob is a directory (virtual folder) or file
                     bool isFile = !blobItem.Name.EndsWith("/"); // Treat "folders" as blobs with a trailing "/"
 
