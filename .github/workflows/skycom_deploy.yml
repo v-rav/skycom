@@ -20,9 +20,9 @@
 name: Build and deploy ASP.Net Core app to an Azure Web App
 
 env:
-  AZURE_WEBAPP_NAME: app-dlsystem    # set this to the name of your Azure Web App
-  AZURE_WEBAPP_PACKAGE_PATH: '.'      # set this to the path to your web app project, defaults to the repository root
-  DOTNET_VERSION: '8'                 # set this to the .NET Core version to use
+  AZURE_WEBAPP_NAME: app-dlsystem    # Set to the name of your Azure Web App
+  DOTNET_VERSION: '8'                 # .NET Core version to use
+  AZURE_WEBAPP_PACKAGE_PATH: '.' # Specify the path to the publish folder
 
 on:
   push:
@@ -37,29 +37,29 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
       - name: Set up .NET Core
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
-      - name: Set up dependency caching for faster builds
-        uses: actions/cache@v3
-        with:
-          path: ~/.nuget/packages
-          key: ${{ runner.os }}-nuget-${{ hashFiles('**/packages.lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-nuget-
+      - name: Debug Repository Structure
+        run: |
+          echo "Current directory:"
+          pwd
+          echo "Repository structure:"
+          find . -type f
 
-      - name: Build with dotnet
-        run: dotnet build --configuration Release
+      - name: Build Solution
+        run: dotnet build ./DLManagement.csproj --configuration Release
 
-      - name: dotnet publish
-        run: dotnet publish -c Release -o ${{env.DOTNET_ROOT}}/myapp
+      - name: Publish Application
+        run: dotnet publish ./DLManagement.csproj --configuration Release -o ${{env.DOTNET_ROOT}}/myapp
 
       - name: Upload artifact for deployment job
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         with:
           name: .net-app
           path: ${{env.DOTNET_ROOT}}/myapp
@@ -69,15 +69,19 @@ jobs:
       contents: none
     runs-on: ubuntu-latest
     needs: build
-    environment:
-      name: 'Development'
-      url: ${{ steps.deploy-to-webapp.outputs.webapp-url }}
 
     steps:
       - name: Download artifact from build job
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v3
         with:
           name: .net-app
+
+      - name: Debug Artifact Directory
+        run: |         
+          echo "Current directory:"
+          pwd
+          echo "Directory content after downloading artifact:"
+          ls -R .
 
       - name: Deploy to Azure Web App
         id: deploy-to-webapp
