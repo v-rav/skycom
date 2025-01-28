@@ -93,12 +93,7 @@ namespace SKYCOM.DLManagement.Services
             //Get Blobs List
             try
             {
-                var blobsList = BlobHelperProvider.BlobHelper.GetBlobList(serverFileInfo.FullPath);
-                //var serverfiles = new List<ServerFileInfo>();
-                //foreach (var blob in blobsList) {
-                //    serverfiles.Add(new ServerFileInfo { FileName = blob.FileName, FullPath = blob.ContainerName, FileSize = blob.FileSize, Date = blob.Date });
-                //        }
-                return Task.FromResult(blobsList);               
+                return BlobHelperProvider.BlobHelper.GetBlobList(serverFileInfo.FullPath);                             
             }
             finally
             {
