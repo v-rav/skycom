@@ -34,100 +34,104 @@ namespace SKYCOM.DLManagement.AzureHelper
 
         #region private methods
 
-        private BlobClient GetBlobClient(string containerName, string blobName)
-        {
-            // Retrieve connection string from settings (if available)
-            if (!string.IsNullOrEmpty(settings.Value.BlobSettings.ConnectionString))
-            {              
-                // If no connection string, use Managed Identity for authentication
-                return AccessBlobWithSasTocken(blobName, containerName);
-            }
-            else
-            {
-                BlobContainerClient containerClient = GetBlobContainerClientUsingManagedIdentity(containerName);
-                return containerClient.GetBlobClient(blobName);
-            }
-        }
-
-        private BlobContainerClient GetBlobContainerClientUsingManagedIdentity(string containerName)
+       
+        /// <summary>
+        /// Gets a BlobContainerClient using either Managed Identity or a connection string.
+        /// </summary>
+        /// <param name="containerName">The name of the container to access.</param>
+        /// <returns>BlobContainerClient to interact with the container.</returns>
+        public BlobContainerClient GetBlobContainerClient(string containerName)
         {
             try
             {
-                // Managed Identity Blob Service URI              
-                if (string.IsNullOrEmpty(storageAccountName))
+                // Retrieve connection string from settings (if available)
+                string connectionString = settings.Value.BlobSettings.ConnectionString;
+                if (!string.IsNullOrEmpty(connectionString))
                 {
-                    throw new KeyNotFoundException(Constants.BlobConstants.StorageNameKeyNotfoundErrorMessage);
+                    // If connection string is provided, use it for authentication
+                    return GetBlobContainerClientUsingConnectionString(containerName, connectionString);
                 }
-                string blobServiceUri = $"https://{storageAccountName}.blob.core.windows.net";
-                var credential = new DefaultAzureCredential();
-
-                BlobServiceClient blobServiceClient = new BlobServiceClient(new Uri(blobServiceUri), credential);
-                if (string.IsNullOrEmpty(containerName))
+                else
                 {
-                    throw new KeyNotFoundException(Constants.BlobConstants.ContainerNameKeyNotyfoundErrorMessage);
+                    // If no connection string, use Managed Identity for authentication
+                    return GetBlobContainerClientUsingManagedIdentity(containerName);
                 }
-                return blobServiceClient.GetBlobContainerClient(containerName);
             }
-            catch
+            catch (Exception ex)
             {
-
+                // Log the exception or rethrow as necessary
+                Console.WriteLine($"Error while getting BlobContainerClient: {ex.Message}");
                 throw;
             }
         }
 
         /// <summary>
-        /// Access blob with sas token to access the blob
+        /// Gets a BlobContainerClient using a connection string.
         /// </summary>
-        /// <param name="blobName"></param>
-        /// <returns></returns>
-        private BlobClient AccessBlobWithSasTocken(string blobName, string containerName)
+        /// <param name="containerName">The name of the container.</param>
+        /// <param name="connectionString">The connection string to use for authentication.</param>
+        /// <returns>BlobContainerClient</returns>
+        private BlobContainerClient GetBlobContainerClientUsingConnectionString(string containerName, string connectionString)
         {
-            //Second option
-            var blobServiceClient = new BlobServiceClient(settings.Value.BlobSettings.ConnectionString);
-            var blobContainerClient = blobServiceClient.GetBlobContainerClient(containerName);
-            var blobClient = blobContainerClient.GetBlobClient(blobName);
-            // Specify the expiration time of the SAS token
-            DateTimeOffset expirationTime = DateTimeOffset.UtcNow.AddHours(1); // token expires in 1 hour
+            try
+            {
+                if (string.IsNullOrEmpty(containerName))
+                {
+                    throw new KeyNotFoundException("Container name is required.");
+                }
 
-            // Create a SAS token with read permissions (you can customize this)
-            var sasToken = blobClient.GenerateSasUri(
-                 BlobSasPermissions.All, // Required Permissions, // Permissions: Read
-                expirationTime // Expiration time
-            );
-
-            // Create a new BlobClient using the SAS URI
-            var sasBlobClient = new BlobClient(sasToken);
-
-
-            // Return the blob url with SAS token 
-            return sasBlobClient;
+                var blobServiceClient = new BlobServiceClient(connectionString);
+                return blobServiceClient.GetBlobContainerClient(containerName);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error using connection string for BlobContainerClient: {ex.Message}");
+                throw;
+            }
         }
 
-        /// <summary>
-        /// Access blob with sas token to access the blob
-        /// </summary>
-        /// <param name="blobName"></param>
-        /// <returns></returns>
-        private BlobContainerClient AccessBlobContainerClientWithSasTocken(string containerName)
+        //private BlobClient GetBlobClient(string containerName, string blobName)
+        //{
+        //    // Retrieve connection string from settings (if available)
+        //    if (!string.IsNullOrEmpty(settings.Value.BlobSettings.ConnectionString))
+        //    {              
+        //        // If no connection string, use Managed Identity for authentication
+        //        return AccessBlobWithSasTocken(blobName, containerName);
+        //    }
+        //    else
+        //    {
+        //        BlobContainerClient containerClient = GetBlobContainerClientUsingManagedIdentity(containerName);
+        //        return containerClient.GetBlobClient(blobName);
+        //    }
+        //}
+
+        private BlobContainerClient GetBlobContainerClientUsingManagedIdentity(string containerName)
         {
-            var blobServiceClient = new BlobServiceClient(settings.Value.BlobSettings.ConnectionString);
-            var blobContainerClient = blobServiceClient.GetBlobContainerClient(containerName);
-            // Specify the expiration time of the SAS token
-            DateTimeOffset expirationTime = DateTimeOffset.UtcNow.AddHours(1); // token expires in 1 hour
+            try
+            {
+                if (string.IsNullOrEmpty(storageAccountName))
+                {
+                    throw new KeyNotFoundException("Storage account name is required.");
+                }
 
-            // Create a SAS token with read permissions (you can customize this)
-            var sasToken = blobContainerClient.GenerateSasUri(
-                BlobContainerSasPermissions.All | BlobContainerSasPermissions.Read | BlobContainerSasPermissions.Filter | BlobContainerSasPermissions.Create,// Permissions: Read
-                expirationTime // Expiration time
-            );
+                string blobServiceUri = $"https://{storageAccountName}.blob.core.windows.net";
+                var credential = new DefaultAzureCredential();
 
-            // Create a new BlobClient using the SAS URI
-            var sasBlobContainerClient = new BlobContainerClient(sasToken);
+                var blobServiceClient = new BlobServiceClient(new Uri(blobServiceUri), credential);
+                if (string.IsNullOrEmpty(containerName))
+                {
+                    throw new KeyNotFoundException("Container name is required.");
+                }
 
-            // Return the blob url with SAS token 
-            return sasBlobContainerClient;
+                return blobServiceClient.GetBlobContainerClient(containerName);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error using Managed Identity for BlobContainerClient: {ex.Message}");
+                throw;
+            }
         }
-        
+
 
         #endregion
 
@@ -146,18 +150,9 @@ namespace SKYCOM.DLManagement.AzureHelper
             try
             {
                 ////Getting the blob client from azure blob storage using managed Identity
-                //BlobContainerClient containerClient = GetBlobContainerClient(containerName);
+                BlobContainerClient containerClient = GetBlobContainerClient(containerName);
 
-                //// Create the container if it doesn't exist
-                //// containerClient.CreateIfNotExists();
-
-                //// Create a blob client for the file
-                //BlobClient blobClient = containerClient.GetBlobClient(fileName);
-
-                ////Local testing - use sas access token
-                ////var blobClient = AccessBlobWithSasTocken(fileName,containerName);
-
-                var blobClient = GetBlobClient(containerName, fileName);
+                var blobClient = containerClient.GetBlobClient(fileName);
                 // Upload the file stream to Azure Blob Storage
                 using (memoryStream)
                 {
@@ -183,7 +178,7 @@ namespace SKYCOM.DLManagement.AzureHelper
                     containerName = settings.Value.BlobSettings.CommonContainerName;
                 }
                 // Get a reference to the container
-                BlobContainerClient containerClient = GetBlobContainerClientUsingManagedIdentity(containerName);
+                BlobContainerClient containerClient = GetBlobContainerClient(containerName);
                 if (containerClient == null)
                 {
                     throw new Exception($"AzBlobStorageHelper : DownloadblobAsync - Container not exists  {containerName}");
@@ -192,8 +187,6 @@ namespace SKYCOM.DLManagement.AzureHelper
                 // Get a reference to the blob (file)
                 BlobClient blobClient = containerClient.GetBlobClient(blobName);
 
-                //Local testing
-                //var blobClient = AccessBlobWithSasTocken(blobName, containerName);
                 if (blobClient.Exists())
                 {
                     // Create a MemoryStream to hold the downloaded content
@@ -209,14 +202,6 @@ namespace SKYCOM.DLManagement.AzureHelper
                 }
                 else
                     return null;
-
-                #region CMF - Local Debugging
-                //Below lines will be uncommented for local testing
-                //catch (RequestFailedException ex) when (ex.Status == 403)
-                //{
-                //     return AccessBlobWithSasTocken(blobName); 
-                //}
-                #endregion
             }
             catch (Exception ex)
             {
@@ -230,9 +215,7 @@ namespace SKYCOM.DLManagement.AzureHelper
             {
 
                 BlobContainerClient containerClient = GetBlobContainerClientUsingManagedIdentity(containerName);
-                var blobClient = containerClient.GetBlobClient(blobName); // Return the BlobClient for the specified blob           
-                //Local testing
-               //var blobClient = AccessBlobWithSasTocken(blobName, containerName);
+                var blobClient = containerClient.GetBlobClient(blobName); // Return the BlobClient for the specified blob   
                 if (blobClient.Exists())
                 {
                     using (var memoryStream = new MemoryStream())
@@ -255,8 +238,7 @@ namespace SKYCOM.DLManagement.AzureHelper
         }
 
         public List<ServerFileInfo> GetBlobList(string containerName = "skycomblobstorage")
-        {
-            
+        {            
             var blobsList = new List<ServerFileInfo>();
 
             // Managed Identity Blob Service URI              
@@ -279,8 +261,8 @@ namespace SKYCOM.DLManagement.AzureHelper
             else //List the folders and files of the current container/directory
             {
                 // Create a new BlobClient using the SAS URI
-                var sasBlobContainerClient = GetBlobContainerClientUsingManagedIdentity(containerName);
-                var blobs = sasBlobContainerClient.GetBlobs();
+                var blobContainerClient = GetBlobContainerClient(containerName);
+                var blobs = blobContainerClient.GetBlobs();
                 foreach (var blobItem in blobs)
                 {
                     // Check if the blob is a directory (virtual folder) or file
