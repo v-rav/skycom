@@ -10,6 +10,7 @@ namespace SKYCOM.DLManagement.AzureHelper
     using NuGet.Protocol.Core.Types;
     using Org.BouncyCastle.Utilities.IO;
     using SKYCOM.DLManagement.Data;
+    using SKYCOM.DLManagement.Util;
     using System;
     using System.Collections.Generic;
     using System.Configuration;
@@ -235,9 +236,9 @@ namespace SKYCOM.DLManagement.AzureHelper
             {
                 throw new Exception(string.Concat(Constants.BlobConstants.ConnectionFailedErrorMessage, ex.Message));
             }
-        }
+        }    
 
-        public List<ServerFileInfo> GetBlobList(string containerName = "skycomblobstorage")
+        public async Task<List<ServerFileInfo>> GetBlobList(string containerName = "skycomblobstorage")
         {            
             var blobsList = new List<ServerFileInfo>();
 
@@ -262,9 +263,9 @@ namespace SKYCOM.DLManagement.AzureHelper
             {
                 // Create a new BlobClient using the SAS URI
                 var blobContainerClient = GetBlobContainerClient(containerName);
-                var blobs = blobContainerClient.GetBlobs();
-                foreach (var blobItem in blobs)
-                {
+                // List all blobs (files and folders) in the container
+                await foreach (var blobItem in blobContainerClient.GetBlobsAsync())
+                {                  
                     // Check if the blob is a directory (virtual folder) or file
                     bool isFile = !blobItem.Name.EndsWith("/"); // Treat "folders" as blobs with a trailing "/"
 
