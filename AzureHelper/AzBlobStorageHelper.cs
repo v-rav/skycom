@@ -215,7 +215,7 @@ namespace SKYCOM.DLManagement.AzureHelper
             try
             {
 
-                BlobContainerClient containerClient = GetBlobContainerClientUsingManagedIdentity(containerName);
+                BlobContainerClient containerClient = GetBlobContainerClient(containerName);
                 var blobClient = containerClient.GetBlobClient(blobName); // Return the BlobClient for the specified blob   
                 if (blobClient.Exists())
                 {

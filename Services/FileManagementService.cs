@@ -96,6 +96,10 @@ namespace SKYCOM.DLManagement.Services
                 var blobs =  await BlobHelperProvider.BlobHelper.GetBlobList(serverFileInfo.FullPath);
                 return blobs.ToList();
             }
+            catch(Exception ex)
+            {
+                throw new Exception($"Failed to retrieve blobs list for the path:  {serverFileInfo.FullPath}" , ex);
+            }
             finally
             {
                 LogUtil.Instance.Trace("end");
