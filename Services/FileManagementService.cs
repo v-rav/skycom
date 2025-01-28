@@ -87,13 +87,14 @@ namespace SKYCOM.DLManagement.Services
         /// <param name="serverFileInfo"></param>
         /// <returns></returns>
         /// <exception cref="ArgumentNullException"></exception>
-        public Task<List<ServerFileInfo>> GetServerFileInfos(ServerFileInfo serverFileInfo)
+        public async Task<List<ServerFileInfo>> GetServerFileInfos(ServerFileInfo serverFileInfo)
         {
             LogUtil.Instance.Trace("start");
             //Get Blobs List
             try
             {
-                return BlobHelperProvider.BlobHelper.GetBlobList(serverFileInfo.FullPath);                             
+                var blobs =  await BlobHelperProvider.BlobHelper.GetBlobList(serverFileInfo.FullPath);
+                return blobs.ToList();
             }
             finally
             {
