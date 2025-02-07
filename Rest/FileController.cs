@@ -179,7 +179,7 @@ namespace SKYCOM.DLManagement.Rest
             try
             {
                 //For testing purpose, trying to get the list of products from mysql. Will be removed once tested MI of azure mysql
-                List<Product> products = _context.Product.ToList();
+                //List<Product> products = _context.Product.ToList();
 
 
                 // リクエストのバリデーションチェック

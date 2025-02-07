@@ -12,6 +12,7 @@ namespace SKYCOM.DLManagement.AzureHelper
     using SKYCOM.DLManagement.Data;
     using SKYCOM.DLManagement.Util;
     using System;
+    using System.ClientModel;
     using System.Collections.Generic;
     using System.Configuration;
     using System.IO;
@@ -238,7 +239,7 @@ namespace SKYCOM.DLManagement.AzureHelper
             }
         }
 
-        public async Task<List<ServerFileInfo>> GetBlobList(string containerName)
+        public async Task<List<ServerFileInfo>> GetBlobList_old(string containerName)
         {
             var blobsList = new List<ServerFileInfo>();
 
@@ -290,6 +291,48 @@ namespace SKYCOM.DLManagement.AzureHelper
 
             return blobsList;
         }
+
+        public List<string> GetBlobContainers()
+        {
+            List<string> containers = new List<string>();
+            // Managed Identity Blob Service URI              
+            if (string.IsNullOrEmpty(storageAccountName))
+            {
+                throw new KeyNotFoundException(Constants.BlobConstants.StorageNameKeyNotfoundErrorMessage);
+            }
+            string blobServiceUri = $"https://{storageAccountName}.blob.core.windows.net";
+            var credential = new DefaultAzureCredential();
+
+            BlobServiceClient blobServiceClient = new BlobServiceClient(new Uri(blobServiceUri), credential);
+            containers.AddRange(blobServiceClient.GetBlobContainers().ToList().Select(x => x.Name));
+            return containers;
+        }
+
+        public async Task<List<ServerFileInfo>> GetBlobList(string containerName, string continuationToken, int pageSize)
+        {
+            var blobsList = new List<ServerFileInfo>();
+            var blobContainerClient = GetBlobContainerClient(containerName);
+            var pages = blobContainerClient.GetBlobsAsync().AsPages(continuationToken, pageSize);
+
+            await foreach (var page in blobContainerClient.GetBlobsAsync().AsPages(continuationToken, pageSize))
+            {
+                continuationToken = page.ContinuationToken; // Store continuation token for next page requests
+
+                blobsList.AddRange(page.Values.Select(blobItem => new ServerFileInfo
+                {
+                    FileName = blobItem.Name,
+                    FileSize = (int)(blobItem.Properties.ContentLength ?? 0), // Handle null case
+                    Date = blobItem.Properties.LastModified?.UtcDateTime ?? DateTime.MinValue, // Handle null case
+                    IsFile = true, // Assuming it's a file
+                    Attributes = FileAttributes.Normal,
+                    FullPath = containerName
+                }));                
+            }
+            return blobsList;
+        }
+
+
+
         #endregion
     }
 }
