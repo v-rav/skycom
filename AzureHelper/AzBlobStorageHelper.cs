@@ -292,20 +292,40 @@ namespace SKYCOM.DLManagement.AzureHelper
             return blobsList;
         }
 
-        public List<string> GetBlobContainers()
+        //public List<string> GetBlobContainers()
+        //{
+        //    List<string> containers = new List<string>();
+        //    // Managed Identity Blob Service URI              
+        //    if (string.IsNullOrEmpty(storageAccountName))
+        //    {
+        //        throw new KeyNotFoundException(Constants.BlobConstants.StorageNameKeyNotfoundErrorMessage);
+        //    }
+        //    string blobServiceUri = $"https://{storageAccountName}.blob.core.windows.net";
+        //    var credential = new DefaultAzureCredential();
+
+        //    BlobServiceClient blobServiceClient = new BlobServiceClient(new Uri(blobServiceUri), credential);
+        //    containers.AddRange(blobServiceClient.GetBlobContainers().ToList().Select(x => x.Name));
+        //    return containers;
+        //}
+        public async Task<List<string>> GetBlobContainersAsync()
         {
-            List<string> containers = new List<string>();
-            // Managed Identity Blob Service URI              
             if (string.IsNullOrEmpty(storageAccountName))
             {
                 throw new KeyNotFoundException(Constants.BlobConstants.StorageNameKeyNotfoundErrorMessage);
             }
+
             string blobServiceUri = $"https://{storageAccountName}.blob.core.windows.net";
             var credential = new DefaultAzureCredential();
+            var blobServiceClient = new BlobServiceClient(new Uri(blobServiceUri), credential);
 
-            BlobServiceClient blobServiceClient = new BlobServiceClient(new Uri(blobServiceUri), credential);
-            containers.AddRange(blobServiceClient.GetBlobContainers().ToList().Select(x => x.Name));
-            return containers;
+            var containerNames = new List<string>();
+
+            await foreach (var page in blobServiceClient.GetBlobContainersAsync().AsPages())
+            {
+                containerNames.AddRange(page.Values.Select(c => c.Name));
+            }
+
+            return containerNames;
         }
 
         public async Task<List<ServerFileInfo>> GetBlobList(string containerName, string continuationToken, int pageSize)

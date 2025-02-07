@@ -150,10 +150,10 @@
     /// Load containers on page load
     /// </summary>
     /// <returns></returns>
-    private void LoadContainersAsync()
+    private async Task LoadContainersAsync()
     {
         _containers.Clear();
-        _containers = BlobHelperProvider.BlobHelper.GetBlobContainers();
+        _containers = await BlobHelperProvider.BlobHelper.GetBlobContainersAsync();
     }
     /// <summary>
     ///
@@ -213,7 +213,7 @@
         LogUtil.Instance.Trace("start");
         try
         {
-            LoadContainersAsync();
+            await LoadContainersAsync();
             initialDirectory = _settings.Value.Upload.UploadFileRootPath;
         }
         catch (Exception ex)

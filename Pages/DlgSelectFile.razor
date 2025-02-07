@@ -8,6 +8,7 @@
 //=============================================================================
 -->
 
+@using SKYCOM.DLManagement.AzureHelper
 @using SKYCOM.DLManagement.Data
 @using SKYCOM.DLManagement.Services
 @using System.Data
@@ -41,46 +42,47 @@
                         </thead>
                         <tbody>
                             @if (currentDirectory != initialDirectory)
-                                    {
-                            <tr @onclick="BeforeDirectory">
-                                <th height="20" style="width:285px"><img border="0" src="../images/ArrowUp.png" width="20" style="margin-right: 10px; background-color:cadetblue" />@_message.MessageList["HigherLevelDirectory"]</th>
-                                <th colspan="2"></th>
-                            </tr>
-                                    }
+                            {
+                                <tr @onclick="BeforeDirectory">
+                                    <th height="20" style="width:285px"><img border="0" src="../images/ArrowUp.png" width="20" style="margin-right: 10px; background-color:cadetblue" />@_message.MessageList["HigherLevelDirectory"]</th>
+                                    <th colspan="2"></th>
+                                </tr>
+                            }
                             @if (serverFileInfos != null && serverFileInfos.Count > 0)
-                                    {
-                            @foreach (var serverFileInfo in serverFileInfos)
-                                        {
+                            {
+                                @foreach (var serverFileInfo in serverFileInfos)
+                                {
 
-                                            if ((serverFileInfo.Attributes & (FileAttributes.Hidden | FileAttributes.System)) == 0)//隠しファイルを表示しない。
+                                    if ((serverFileInfo.Attributes & (FileAttributes.Hidden | FileAttributes.System)) == 0)//隠しファイルを表示しない。
+                                    {
+                                        <tr @onclick="@(() => NextDirectory(serverFileInfo))">
+                                            @if (serverFileInfo.IsFile)
                                             {
-                            <tr @onclick="@(() => NextDirectory(serverFileInfo))">
-                                @if (serverFileInfo.IsFile)
-                                                    {
-                                                        if (SelectFileName == @serverFileInfo.FileName)
-                                                        {
-                                <td style="background-color: #FFCC00;width:285px">@serverFileInfo.FileName</td>
-                                <td style="background-color: #FFCC00; text-align: right;width:150px;">@String.Format("{0:#,0}", serverFileInfo.FileSize)</td>
-                                <td style="background-color: #FFCC00;width:165px">@serverFileInfo.Date.ToString("yyyy/MM/dd HH:mm")</td>
-                                                        }
-                                                        else
-                                                        {
-                                <td style="width: 285px">@serverFileInfo.FileName</td>
-                                <td style="text-align: right;width:150px">@String.Format("{0:#,0}", serverFileInfo.FileSize)</td>
-                                <td style="width:165px">@serverFileInfo.Date.ToString("yyyy/MM/dd HH:mm")</td>
-                                                        }
-                                                    }
-                                                    else
-                                                    {
-                                                        // フォルダ
-                                <td style="width: 285px"><img border="0" src="../images/Folder-05.png" width="25" height="20" alt="folder" style="margin-right: 10px;" />@serverFileInfo.FileName</td>
-                                <td style="width:150px"></td>
-                                <td style="width:165px">@serverFileInfo.Date.ToString("yyyy/MM/dd HH:mm")</td>
-                                                    }
-                            </tr>
+                                                if (SelectFileName == @serverFileInfo.FileName)
+                                                {
+                                                    <td style="background-color: #FFCC00;width:285px">@serverFileInfo.FileName</td>
+                                                    <td style="background-color: #FFCC00; text-align: right;width:150px;">@String.Format("{0:#,0}", serverFileInfo.FileSize)</td>
+                                                    <td style="background-color: #FFCC00;width:165px">@serverFileInfo.Date.ToString("yyyy/MM/dd HH:mm")</td>
+                                                }
+                                                else
+                                                {
+                                                    <td style="width: 285px">@serverFileInfo.FileName</td>
+                                                    <td style="text-align: right;width:150px">@String.Format("{0:#,0}", serverFileInfo.FileSize)</td>
+                                                    <td style="width:165px">@serverFileInfo.Date.ToString("yyyy/MM/dd HH:mm")</td>
+                                                }
                                             }
-                                        }
+                                            else
+                                            {
+                                                // フォルダ
+                                                <td style="width: 285px"><img border="0" src="../images/Folder-05.png" width="25" height="20" alt="folder" style="margin-right: 10px;" />@serverFileInfo.FileName</td>
+                                                <td style="width:150px"></td>
+                                                <td style="width:165px">@serverFileInfo.Date.ToString("yyyy/MM/dd HH:mm")</td>
+                                            }
+                                        </tr>
                                     }
+                                }
+                            }
+                            <tr>  <button @onclick="NextPage" disabled="@string.IsNullOrEmpty(_continuationToken)">Next</button></tr>
                         </tbody>
                     </table>
                 </div>
@@ -96,7 +98,7 @@
 
 @if (isShowBackdrop)
 {
-<div class="modal-backdrop fade show"></div>
+    <div class="modal-backdrop fade show"></div>
 }
 
 
@@ -110,14 +112,62 @@
     private string modalClass = "";
     private bool isShowBackdrop = false;
     private List<ServerFileInfo> serverFileInfos;
-    private string currentDirectory = string.Empty;
-    private string initialDirectory = string.Empty;
+    private string currentDirectory = "skycomcontainer-1"; // customer has to change this 
+    private string initialDirectory = "skycomcontainer-1"; // customer has to change this
 
     public string SelectFileName = string.Empty;
     public string SelectFileFullPath = string.Empty;
     public bool Displayed = false;
     public bool Result = false;
 
+    private string _continuationToken = null;
+    private const int PageSize = 10;
+
+
+    private async Task LoadBlobsAsync(string containerName)
+    {
+        currentDirectory = containerName;
+        if (serverFileInfos != null)
+        {
+            serverFileInfos.Clear();
+        }
+        _continuationToken = null; // Reset pagination
+        await FetchBlobsPageAsync();
+    }
+
+    private async Task FetchBlobsPageAsync(bool isNextPage = false)
+    {
+        if (currentDirectory == null) return;
+        if (serverFileInfos == null || isNextPage == false)
+        {
+            serverFileInfos = new List<ServerFileInfo>();
+        }
+        var containerClient = BlobHelperProvider.BlobHelper.GetBlobContainerClient(currentDirectory);
+        var blobpages = containerClient.GetBlobsAsync().AsPages(_continuationToken, PageSize);
+
+        await foreach (var page in blobpages)
+        {
+            serverFileInfos.AddRange(page.Values.Select(blobItem => new ServerFileInfo
+                {
+                    FileName = blobItem.Name,
+                    FileSize = (int)(blobItem.Properties.ContentLength ?? 0), // Handle null case
+                    Date = blobItem.Properties.LastModified?.UtcDateTime ?? DateTime.MinValue, // Handle null case
+                    IsFile = true, // Assuming it's a file
+                    Attributes = FileAttributes.Normal,
+                    FullPath = currentDirectory
+                }));
+            _continuationToken = page.ContinuationToken; // Store continuation token for next page requests
+            break;
+        }
+    }
+
+    private async Task NextPage()
+    {
+        if (!string.IsNullOrEmpty(_continuationToken))
+        {
+            await FetchBlobsPageAsync(isNextPage: true);
+        }
+    }
     /// <summary>
     /// ファイル選択ダイアログを表示する
     /// </summary>
@@ -134,7 +184,8 @@
 
 
         initialDirectory = _settings.Value.Upload.UploadFileRootPath;
-        serverFileInfos = await _service.GetServerFileInfos(new ServerFileInfo() { FullPath = initialDirectory });
+        //serverFileInfos = await _service.GetServerFileInfos(new ServerFileInfo() { FullPath = initialDirectory });
+        await LoadBlobsAsync(currentDirectory); ;
         currentDirectory = initialDirectory;
         await InvokeAsync(() => StateHasChanged());
     }
@@ -160,7 +211,8 @@
     protected override async Task OnInitializedAsync()
     {
         initialDirectory = _settings.Value.Upload.UploadFileRootPath;
-        serverFileInfos = await _service.GetServerFileInfos(new ServerFileInfo() { FullPath = initialDirectory });
+        //serverFileInfos = await _service.GetServerFileInfos(new ServerFileInfo() { FullPath = initialDirectory });
+        await LoadBlobsAsync(currentDirectory);
         currentDirectory = initialDirectory;
     }
 
@@ -180,9 +232,10 @@
             SelectFileFullPath = serverFileInfo.FullPath;
             return;
         }
-        var fileInfos = await _service.GetServerFileInfos(serverFileInfo);
+        //var fileInfos = await _service.GetServerFileInfos(serverFileInfo);
+        await LoadBlobsAsync(currentDirectory);
         currentDirectory = serverFileInfo.FullPath;
-        serverFileInfos = fileInfos;
+        //serverFileInfos = fileInfos;
 
     }
 
@@ -196,7 +249,7 @@
             //ひとつ上のディレクトリへいかない
             return;
         }
-        var serverFileInfo = new ServerFileInfo() { FullPath = Directory.GetParent(currentDirectory).FullName };
+        var serverFileInfo = new ServerFileInfo() { FullPath = currentDirectory };
         serverFileInfos = await _service.GetServerFileInfos(serverFileInfo);
         currentDirectory = serverFileInfo.FullPath;
     }
