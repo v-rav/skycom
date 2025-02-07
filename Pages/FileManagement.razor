@@ -151,9 +151,8 @@
     /// </summary>
     /// <returns></returns>
     private async Task LoadContainersAsync()
-    {
-        _containers.Clear();
-        _containers = await BlobHelperProvider.BlobHelper.GetBlobContainersAsync();
+    {        
+        _containers = BlobHelperProvider.BlobHelper.GetBlobContainers();
     }
     /// <summary>
     ///

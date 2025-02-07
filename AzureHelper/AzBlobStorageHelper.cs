@@ -292,21 +292,21 @@ namespace SKYCOM.DLManagement.AzureHelper
             return blobsList;
         }
 
-        //public List<string> GetBlobContainers()
-        //{
-        //    List<string> containers = new List<string>();
-        //    // Managed Identity Blob Service URI              
-        //    if (string.IsNullOrEmpty(storageAccountName))
-        //    {
-        //        throw new KeyNotFoundException(Constants.BlobConstants.StorageNameKeyNotfoundErrorMessage);
-        //    }
-        //    string blobServiceUri = $"https://{storageAccountName}.blob.core.windows.net";
-        //    var credential = new DefaultAzureCredential();
+        public List<string> GetBlobContainers()
+        {
+            if (string.IsNullOrEmpty(storageAccountName))
+            {
+                throw new KeyNotFoundException(Constants.BlobConstants.StorageNameKeyNotfoundErrorMessage);
+            }
 
-        //    BlobServiceClient blobServiceClient = new BlobServiceClient(new Uri(blobServiceUri), credential);
-        //    containers.AddRange(blobServiceClient.GetBlobContainers().ToList().Select(x => x.Name));
-        //    return containers;
-        //}
+            string blobServiceUri = $"https://{storageAccountName}.blob.core.windows.net";
+            var credential = new DefaultAzureCredential();
+            var blobServiceClient = new BlobServiceClient(new Uri(blobServiceUri), credential);
+
+            return blobServiceClient.GetBlobContainers()
+                                    .Select(container => container.Name)
+                                    .ToList();
+        }
         public async Task<List<string>> GetBlobContainersAsync()
         {
             if (string.IsNullOrEmpty(storageAccountName))
