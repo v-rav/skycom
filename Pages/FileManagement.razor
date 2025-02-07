@@ -7,9 +7,9 @@
 // EandM
 //=============================================================================
 -->
-
 @page "/FileManagement"
 
+@using SKYCOM.DLManagement.AzureHelper
 @using SKYCOM.DLManagement.Data
 @using SKYCOM.DLManagement.Services
 @using SKYCOM.DLManagement.Util
@@ -28,7 +28,7 @@
 <h1>@_message.MessageList["FileManagement"]</h1>
 
 <form id="uploadForm" method="post" enctype="multipart/form-data">
-    <div class="dropzone" draggable="true"  @ondragstart:preventDefault @ondragleave:preventDefault>
+    <div class="dropzone" draggable="true" @ondragstart:preventDefault @ondragleave:preventDefault>
         <input type="file" id="file" name="file" accept=".zip,.csv" @onchange="(e) => FileChange(e)" />
         <input type="hidden" id="path" name="path" value=@currentDirectory />
         <input type="hidden" id="fileSize" name="fileSize" value=@selectFileSize />
@@ -48,7 +48,7 @@
 <div class="row">
     @if (uploadClass == MIDDLE_CLASS)
     {
-    <button class="@uploadClass" style="margin-left:10px;" type="button" @onclick="Upload">@_message.MessageList["Upload"]</button>
+        <button class="@uploadClass" style="margin-left:10px;" type="button" @onclick="Upload">@_message.MessageList["Upload"]</button>
     }
     else
     {
@@ -56,7 +56,16 @@
     }
 </div>
 <br />
-
+<div>
+    <h3>Containers</h3>
+    <ul>
+        @foreach (var container in _containers)
+        {
+            <li><button @onclick="() => LoadBlobsAsync(container)">@container</button></li>
+        }
+    </ul>
+</div>
+<br />
 <div class="upLoadDestination">
     <div class="dirAddress">
         <!--現在のdirを表示する-->
@@ -94,7 +103,7 @@
                             }
                             else
                             {
-                                // フォルダ
+                            // フォルダ
                                 <td style="flex: 1"><img border="0" src="../images/Folder-05.png" width="25" height="20" alt="folder" style="margin-right: 10px" />@serverFileInfo.FileName</td>
                                 <td style="width: 150px"></td>
                                 <td style="width: 150px">@serverFileInfo.Date.ToString("yyyy/MM/dd HH:mm")</td>
@@ -103,6 +112,7 @@
                     }
                 }
             }
+            <tr>  <button @onclick="NextPage" disabled="@string.IsNullOrEmpty(_continuationToken)">Next</button></tr>
         </tbody>
     </table>
     <hr style="border-top: 1px solid #343a40;">
@@ -132,8 +142,68 @@
     private string initialDirectory = string.Empty;
     private string selectFileName = string.Empty;
     private long selectFileSize = 0L;
+    private string _continuationToken = null;
+    private List<string> _containers = new();
+    private const int PageSize = 10;
 
+    /// <summary>
+    /// Load containers on page load
+    /// </summary>
+    /// <returns></returns>
+    private void LoadContainersAsync()
+    {
+        _containers.Clear();
+        _containers = BlobHelperProvider.BlobHelper.GetBlobContainers();
+    }
+    /// <summary>
+    ///
+    /// </summary>
+    /// <param name="containerName"></param>
+    /// <returns></returns>
+    private async Task LoadBlobsAsync(string containerName)
+    {
+        currentDirectory = containerName;
+        if (serverFileInfos != null)
+        {
+            serverFileInfos.Clear();
+        }
+        _continuationToken = null; // Reset pagination
+        await FetchBlobsPageAsync();
+    }
 
+    private async Task FetchBlobsPageAsync(bool isNextPage = false)
+    {
+        if (currentDirectory == null) return;
+        if (serverFileInfos == null || isNextPage == false)
+        {
+            serverFileInfos = new List<ServerFileInfo>();
+        }
+        var containerClient = BlobHelperProvider.BlobHelper.GetBlobContainerClient(currentDirectory);
+        var blobpages = containerClient.GetBlobsAsync().AsPages(_continuationToken, PageSize);
+
+        await foreach (var page in blobpages)
+        {
+            serverFileInfos.AddRange(page.Values.Select(blobItem => new ServerFileInfo
+                {
+                    FileName = blobItem.Name,
+                    FileSize = (int)(blobItem.Properties.ContentLength ?? 0), // Handle null case
+                    Date = blobItem.Properties.LastModified?.UtcDateTime ?? DateTime.MinValue, // Handle null case
+                    IsFile = true, // Assuming it's a file
+                    Attributes = FileAttributes.Normal,
+                    FullPath = currentDirectory
+                }));
+            _continuationToken = page.ContinuationToken; // Store continuation token for next page requests
+            break;
+        }
+    }
+
+    private async Task NextPage()
+    {
+        if (!string.IsNullOrEmpty(_continuationToken))
+        {
+            await FetchBlobsPageAsync(isNextPage: true);
+        }
+    }
     /// <summary>
     /// 初期化処理
     /// </summary>
@@ -143,6 +213,7 @@
         LogUtil.Instance.Trace("start");
         try
         {
+            LoadContainersAsync();
             initialDirectory = _settings.Value.Upload.UploadFileRootPath;
         }
         catch (Exception ex)
@@ -151,7 +222,7 @@
             throw;
         }
         LogUtil.Instance.Debug($"Current directory {initialDirectory}");
-        serverFileInfos = await _service.GetServerFileInfos(new ServerFileInfo() { FullPath = initialDirectory });
+        //serverFileInfos = await _service.GetServerFileInfos(new ServerFileInfo() { FullPath = initialDirectory });
         currentDirectory = initialDirectory;
         LogUtil.Instance.Trace("end");
     }
@@ -185,7 +256,7 @@
                 // ファイルの場合は何もしない
                 return;
             }
-            serverFileInfos = await _service.GetServerFileInfos(serverFileInfo);
+            //serverFileInfos = await _service.GetServerFileInfos(serverFileInfo);
             currentDirectory = serverFileInfo.FullPath;
         }
         finally
@@ -208,7 +279,7 @@
                 return;
             }
             var serverFileInfo = new ServerFileInfo() { FullPath = initialDirectory };
-            serverFileInfos = await _service.GetServerFileInfos(serverFileInfo);
+            //serverFileInfos = await _service.GetServerFileInfos(serverFileInfo);
             currentDirectory = serverFileInfo.FullPath;
         }
         finally
@@ -307,7 +378,8 @@
                 ErrorDisp.Open(string.Format(_message.MessageList["UploadFailed"], result.Body.message));
                 return;
             }
-            serverFileInfos = await _service.GetServerFileInfos(new ServerFileInfo() { FullPath = currentDirectory });
+            await LoadBlobsAsync(currentDirectory);
+            //serverFileInfos = await _service.GetServerFileInfos(new ServerFileInfo() { FullPath = currentDirectory });
             selectFileName = string.Empty;
             uploadClass = MIDDLE_DISABLED_CLASS;
             await InvokeAsync(() => StateHasChanged());
