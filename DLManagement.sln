@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 16
-VisualStudioVersion = 16.0.30104.148
+# Visual Studio Version 17
+VisualStudioVersion = 17.12.35707.178 d17.12
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DLManagement", "DLManagement.csproj", "{D09BC5B3-0AAE-4F43-AE70-4DE71D3824A9}"
 EndProject
@@ -15,8 +15,8 @@ Global
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{D09BC5B3-0AAE-4F43-AE70-4DE71D3824A9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{D09BC5B3-0AAE-4F43-AE70-4DE71D3824A9}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{D09BC5B3-0AAE-4F43-AE70-4DE71D3824A9}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{D09BC5B3-0AAE-4F43-AE70-4DE71D3824A9}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D09BC5B3-0AAE-4F43-AE70-4DE71D3824A9}.Release|Any CPU.ActiveCfg = Debug|Any CPU
+		{D09BC5B3-0AAE-4F43-AE70-4DE71D3824A9}.Release|Any CPU.Build.0 = Debug|Any CPU
 		{70BB1F27-4C27-4032-8F51-A862DD1662EE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{70BB1F27-4C27-4032-8F51-A862DD1662EE}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{70BB1F27-4C27-4032-8F51-A862DD1662EE}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -27,16 +27,5 @@ Global
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {BA11CAD5-FACB-4B3D-8641-564F60B09593}
-	EndGlobalSection
-	GlobalSection(TeamFoundationVersionControl) = preSolution
-		SccNumberOfProjects = 3
-		SccEnterpriseProvider = {4CA58AB2-18FA-4F8D-95D4-32DDF27D184C}
-		SccTeamFoundationServer = https://dev.azure.com/SkycomDevelopment2
-		SccLocalPath0 = .
-		SccProjectUniqueName1 = DLManagement.csproj
-		SccLocalPath1 = .
-		SccProjectUniqueName2 = ..\\DLManagementTests\\DLManagementTests.csproj
-		SccProjectName2 = ../DLManagementTests
-		SccLocalPath2 = ..\\DLManagementTests
 	EndGlobalSection
 EndGlobal

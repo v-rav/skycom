@@ -181,10 +181,6 @@ namespace SKYCOM.DLManagement.AzureHelper
                 }
                 // Get a reference to the container
                 BlobContainerClient containerClient = GetBlobContainerClient(containerName);
-                if (containerClient == null)
-                {
-                    throw new Exception($"AzBlobStorageHelper : DownloadblobAsync - Container not exists  {containerName}");
-                }
 
                 // Get a reference to the blob (file)
                 BlobClient blobClient = containerClient.GetBlobClient(blobName);

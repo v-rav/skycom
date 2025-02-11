@@ -245,7 +245,7 @@
     /// 次のディレクトリに移動
     /// </summary>
     /// <param name="serverFileInfo">選択されたファルダ情報</param>
-    async void NextDirectory(ServerFileInfo serverFileInfo)
+    private void NextDirectory(ServerFileInfo serverFileInfo)
     {
         LogUtil.Instance.Trace("start");
         try
@@ -267,7 +267,7 @@
     /// <summary>
     /// ひとつ上のディレクトリへ移動
     /// </summary>
-    async void BeforeDirectory()
+    private void BeforeDirectory()
     {
         LogUtil.Instance.Trace("start");
         try

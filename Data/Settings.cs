@@ -58,9 +58,7 @@ namespace SKYCOM.DLManagement.Data
     public class BlobSettings
     {
         public string StorageAccountName { get; set; }
-        public string ConnectionString { get; set; }
-        public string GmailContainerName { get; set; }
-        public string LogContainerName { get; set; }
+        public string ConnectionString { get; set; }       
         public string CommonContainerName { get; set; }
     }
 }
