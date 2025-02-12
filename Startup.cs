@@ -9,6 +9,7 @@
 using Azure.Identity;
 using Blazored.LocalStorage;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Components.Server;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Mvc;
@@ -104,6 +105,12 @@ namespace SKYCOM.DLManagement
             services.AddScoped<FileManagementService>();
             services.AddScoped<ReleaseGuideService>();
             services.AddScoped<DLStatusManagementService>();
+
+            services.Configure<CircuitOptions>(options =>
+            {
+                options.DetailedErrors = true;
+            });
+
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
