@@ -144,7 +144,7 @@
     private long selectFileSize = 0L;
     private string _continuationToken = null;
     private List<string> _containers = new();
-    private const int PageSize = 10;
+    private const int PageSize = 2;
 
     /// <summary>
     /// Load containers on page load
@@ -152,7 +152,7 @@
     /// <returns></returns>
     private async Task LoadContainersAsync()
     {        
-        _containers = BlobHelperProvider.BlobHelper.GetBlobContainers();
+        _containers = await BlobHelperProvider.BlobHelper.GetBlobContainers();
     }
     /// <summary>
     ///
@@ -178,9 +178,9 @@
             serverFileInfos = new List<ServerFileInfo>();
         }
         var containerClient = BlobHelperProvider.BlobHelper.GetBlobContainerClient(currentDirectory);
-        var blobpages = containerClient.GetBlobsAsync().AsPages(_continuationToken, PageSize);
+       // var blobpages = await containerClient.GetBlobsAsync().AsPages(_continuationToken, PageSize);
 
-        await foreach (var page in blobpages)
+        await foreach (var page in containerClient.GetBlobsAsync().AsPages(_continuationToken, PageSize))
         {
             serverFileInfos.AddRange(page.Values.Select(blobItem => new ServerFileInfo
                 {

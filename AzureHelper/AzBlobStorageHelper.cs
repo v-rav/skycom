@@ -27,7 +27,6 @@ namespace SKYCOM.DLManagement.AzureHelper
         // private readonly BlobSettings blobSettings;
         private readonly string storageAccountName;
         private readonly IOptions<Settings> settings;
-
         public AzBlobStorageHelper(IConfiguration configuration, IOptions<Settings> settings)
         {
             this.settings = settings;
@@ -36,6 +35,41 @@ namespace SKYCOM.DLManagement.AzureHelper
 
         #region private methods
 
+        private BlobServiceClient GetBlobServiceClient()
+        {
+            try
+            {
+                // Retrieve connection string from settings (if available)
+                string connectionString = settings.Value.BlobSettings.ConnectionString;
+                if (!string.IsNullOrEmpty(connectionString))
+                {
+                    // If connection string is provided, use it for authentication
+                    return new BlobServiceClient(connectionString);
+                }
+                else
+                {
+                    if (string.IsNullOrEmpty(storageAccountName))
+                    {
+                        throw new KeyNotFoundException("Storage account name is required.");
+                    }
+                    // If no connection string, use Managed Identity for authentication
+                    string blobServiceUri = $"https://{storageAccountName}.blob.core.windows.net";
+                    var credential = new DefaultAzureCredential();
+                    return new BlobServiceClient(new Uri(blobServiceUri), credential);
+                }
+               
+            }
+            catch (Exception ex)
+            {
+                // Log the exception or rethrow as necessary
+                Console.WriteLine($"Error while getting BlobContainerClient: {ex.Message}");
+                throw;
+            }
+        }
+
+        #endregion
+
+        #region public methods
 
         /// <summary>
         /// Gets a BlobContainerClient using either Managed Identity or a connection string.
@@ -46,18 +80,8 @@ namespace SKYCOM.DLManagement.AzureHelper
         {
             try
             {
-                // Retrieve connection string from settings (if available)
-                string connectionString = settings.Value.BlobSettings.ConnectionString;
-                if (!string.IsNullOrEmpty(connectionString))
-                {
-                    // If connection string is provided, use it for authentication
-                    return GetBlobContainerClientUsingConnectionString(containerName, connectionString);
-                }
-                else
-                {
-                    // If no connection string, use Managed Identity for authentication
-                    return GetBlobContainerClientUsingManagedIdentity(containerName);
-                }
+                var blobServiceClient = GetBlobServiceClient();
+                return blobServiceClient.GetBlobContainerClient(containerName);
             }
             catch (Exception ex)
             {
@@ -66,79 +90,6 @@ namespace SKYCOM.DLManagement.AzureHelper
                 throw;
             }
         }
-
-        /// <summary>
-        /// Gets a BlobContainerClient using a connection string.
-        /// </summary>
-        /// <param name="containerName">The name of the container.</param>
-        /// <param name="connectionString">The connection string to use for authentication.</param>
-        /// <returns>BlobContainerClient</returns>
-        private BlobContainerClient GetBlobContainerClientUsingConnectionString(string containerName, string connectionString)
-        {
-            try
-            {
-                if (string.IsNullOrEmpty(containerName))
-                {
-                    throw new KeyNotFoundException("Container name is required.");
-                }
-
-                var blobServiceClient = new BlobServiceClient(connectionString);
-                return blobServiceClient.GetBlobContainerClient(containerName);
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error using connection string for BlobContainerClient: {ex.Message}");
-                throw;
-            }
-        }
-
-        //private BlobClient GetBlobClient(string containerName, string blobName)
-        //{
-        //    // Retrieve connection string from settings (if available)
-        //    if (!string.IsNullOrEmpty(settings.Value.BlobSettings.ConnectionString))
-        //    {              
-        //        // If no connection string, use Managed Identity for authentication
-        //        return AccessBlobWithSasTocken(blobName, containerName);
-        //    }
-        //    else
-        //    {
-        //        BlobContainerClient containerClient = GetBlobContainerClientUsingManagedIdentity(containerName);
-        //        return containerClient.GetBlobClient(blobName);
-        //    }
-        //}
-
-        private BlobContainerClient GetBlobContainerClientUsingManagedIdentity(string containerName)
-        {
-            try
-            {
-                if (string.IsNullOrEmpty(storageAccountName))
-                {
-                    throw new KeyNotFoundException("Storage account name is required.");
-                }
-
-                string blobServiceUri = $"https://{storageAccountName}.blob.core.windows.net";
-                var credential = new DefaultAzureCredential();
-
-                var blobServiceClient = new BlobServiceClient(new Uri(blobServiceUri), credential);
-                if (string.IsNullOrEmpty(containerName))
-                {
-                    throw new KeyNotFoundException("Container name is required.");
-                }
-
-                return blobServiceClient.GetBlobContainerClient(containerName);
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error using Managed Identity for BlobContainerClient: {ex.Message}");
-                throw;
-            }
-        }
-
-
-        #endregion
-
-        #region public methods
-
 
         /// <summary>
         /// Upload file into blob container
@@ -170,6 +121,10 @@ namespace SKYCOM.DLManagement.AzureHelper
         /// <summary>
         /// Download blob content - using managed identity using memorystream.
         /// </summary>
+        /// <param name="containerName"></param>
+        /// <param name="blobName"></param>
+        /// <returns></returns>
+        /// <exception cref="Exception"></exception>
         public MemoryStream DownloadBlobToMemoryStream(string containerName, string blobName)
         {
             try
@@ -207,6 +162,13 @@ namespace SKYCOM.DLManagement.AzureHelper
             }
         }
 
+        /// <summary>
+        /// Donwload the blob content as string
+        /// </summary>
+        /// <param name="containerName"></param>
+        /// <param name="blobName"></param>
+        /// <returns></returns>
+        /// <exception cref="Exception"></exception>
         public string DownloadBlobContent(string containerName, string blobName)
         {
             try
@@ -234,96 +196,38 @@ namespace SKYCOM.DLManagement.AzureHelper
                 throw new Exception(string.Concat(Constants.BlobConstants.ConnectionFailedErrorMessage, ex.Message));
             }
         }
-
-        public async Task<List<ServerFileInfo>> GetBlobList_old(string containerName)
+        
+        /// <summary>
+        /// Get containers list of the blob storage account
+        /// </summary>
+        /// <returns></returns>
+        public async Task<List<string>> GetBlobContainers()
         {
-            var blobsList = new List<ServerFileInfo>();
-
-            //For the first time, load all the containers of the storageaccount, so assigning the containername to storage account.
-            if (string.IsNullOrEmpty(containerName))
+            try
             {
-                containerName = storageAccountName;
-            }
-
-            // Managed Identity Blob Service URI              
-            if (string.IsNullOrEmpty(storageAccountName))
-            {
-                throw new KeyNotFoundException(Constants.BlobConstants.StorageNameKeyNotfoundErrorMessage);
-            }
-            string blobServiceUri = $"https://{storageAccountName}.blob.core.windows.net";
-            var credential = new DefaultAzureCredential();
-
-            BlobServiceClient blobServiceClient = new BlobServiceClient(new Uri(blobServiceUri), credential);
-            if (containerName == storageAccountName) //List all containers if the full path is root directory
-            {
-                foreach (BlobContainerItem containerItem in blobServiceClient.GetBlobContainers())
+                BlobServiceClient blobServiceClient = GetBlobServiceClient();
+                var containers = new List<string>();
+                await foreach (var container in blobServiceClient.GetBlobContainersAsync())
                 {
-                    blobsList.Add(new ServerFileInfo() { FileName = containerItem.Name, IsFile = false, FullPath = containerItem.Name, Attributes = FileAttributes.Directory });
+                    containers.Add(container.Name);
                 }
-                return blobsList;
+                return containers;
             }
-            else //List the folders and files of the current container/directory
+            catch (Exception ex)
             {
-                // Create a new BlobClient using the SAS URI
-                var blobContainerClient = GetBlobContainerClient(containerName);
-                // List all blobs (files and folders) in the container
-                await foreach (var blobItem in blobContainerClient.GetBlobsAsync())
-                {
-                    // Check if the blob is a directory (virtual folder) or file
-                    bool isFile = !blobItem.Name.EndsWith("/"); // Treat "folders" as blobs with a trailing "/"
-
-                    blobsList.Add(new ServerFileInfo
-                    {
-
-                        FileName = blobItem.Name,
-                        FileSize = (int)blobItem.Properties.ContentLength,
-                        Date = blobItem.Properties.LastModified.Value.UtcDateTime,
-                        IsFile = isFile,
-                        Attributes = FileAttributes.Normal,
-                        FullPath = containerName
-                    });
-                }
+                // Log the exception or rethrow as necessary
+                Console.WriteLine($"Error while getting BlobContainerClient: {ex.Message}");
+                throw;
             }
-
-            return blobsList;
         }
-
-        public List<string> GetBlobContainers()
-        {
-            if (string.IsNullOrEmpty(storageAccountName))
-            {
-                throw new KeyNotFoundException(Constants.BlobConstants.StorageNameKeyNotfoundErrorMessage);
-            }
-
-            string blobServiceUri = $"https://{storageAccountName}.blob.core.windows.net";
-            var credential = new DefaultAzureCredential();
-            var blobServiceClient = new BlobServiceClient(new Uri(blobServiceUri), credential);
-
-            return blobServiceClient.GetBlobContainers()
-                                    .Select(container => container.Name)
-                                    .ToList();
-        }
-        public async Task<List<string>> GetBlobContainersAsync()
-        {
-            if (string.IsNullOrEmpty(storageAccountName))
-            {
-                throw new KeyNotFoundException(Constants.BlobConstants.StorageNameKeyNotfoundErrorMessage);
-            }
-
-            string blobServiceUri = $"https://{storageAccountName}.blob.core.windows.net";
-            var credential = new DefaultAzureCredential();
-            var blobServiceClient = new BlobServiceClient(new Uri(blobServiceUri), credential);
-
-            var containerNames = new List<string>();
-
-            await foreach (var page in blobServiceClient.GetBlobContainersAsync().AsPages())
-            {
-                containerNames.AddRange(page.Values.Select(c => c.Name));
-            }
-
-            return containerNames;
-        }
-
+      
+        /// <summary>
+        /// Get blobs list with pagination
+        /// </summary>
+        /// <param name="containerName"></param>
+        /// <param name="continuationToken"></param>
+        /// <param name="pageSize"></param>
+        /// <returns></returns>
         public async Task<List<ServerFileInfo>> GetBlobList(string containerName, string continuationToken, int pageSize)
         {
             var blobsList = new List<ServerFileInfo>();
