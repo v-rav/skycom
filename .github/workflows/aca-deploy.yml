@@ -32,14 +32,25 @@ jobs:
 
       - name: Build and Push Image to ACR
         run: |
-          if [[ -f "./Dockerfile" ]]; then
-             echo "Dockerfile found. Building with Docker..."
-             docker build -t ${{ secrets.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }} .
-             docker push ${{ secrets.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }}
+          set -e  # Exit on failure
+
+          echo "🔑 Logging into ACR..."
+          az acr login --name ${{ secrets.ACR_NAME }}
+
+          if [[ -f Dockerfile ]]; then
+            echo "✅ Dockerfile found. Building with Docker..."
+            docker build -t ${{ secrets.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }} .
+            docker push ${{ secrets.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }}
           else
-             echo "⚠️ No Dockerfile found. Using az acr build from GitHub..."
-             az acr build --registry ${{ secrets.ACR_NAME }} --image ${{ env.IMAGE_NAME }}:${{ github.sha }} https://github.com/v-rav/skycom.git
+            echo "⚠️ No Dockerfile found. Using az acr build..."
+            echo "📂 Listing current directory contents for debugging..."
+            ls -la  # Debugging: Show files in the workspace
+
+            az acr build --registry ${{ secrets.ACR_NAME }} \
+            --image ${{ env.IMAGE_NAME }}:${{ github.sha }} \
+            https://github.com/v-rav/skycom.git
           fi
+
   
 
 
