@@ -46,7 +46,7 @@ jobs:
             echo "📂 Listing current directory contents for debugging..."
             ls -la  # Debugging: Show files in the workspace
 
-            az acr build --registry ${{ secrets.ACR_NAME }} \
+            az acr pack build --registry ${{ secrets.ACR_NAME }} \
             --image ${{ env.IMAGE_NAME }}:${{ github.sha }} \
             https://github.com/v-rav/skycom.git
           fi
