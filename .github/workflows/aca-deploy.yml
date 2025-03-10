@@ -1,0 +1,52 @@
+name: Build and Deploy to Azure Container Apps
+
+on:
+  push:
+    branches:
+      - main
+
+env:
+  ACR_NAME: acrcmfajinkyab.azurecr.io   # Azure Container Registry (ACR) Name
+  SERVICE_NAME: myservice       # Microservice Name
+  RESOURCE_GROUP: RG-Global-RavinderRana-Appteam
+  ACA_ENV: acaenvdev-rav
+  LOCATION: eastus
+  IMAGE_TAG: latest
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Log in to Azure
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Log in to ACR
+        run: az acr login --name ${{ secrets.ACR_NAME }}
+
+      - name: Build and Push Docker Image
+        run: |
+          if [[ -f "./Dockerfile" ]]; then
+            echo "✅ Dockerfile found. Using docker build..."
+            docker build -t ${{ secrets.ACR_NAME }}/${{ env.SERVICE_NAME }}:${{ env.IMAGE_TAG }} .
+            docker push ${{ secrets.ACR_NAME }}/${{ env.SERVICE_NAME }}:${{ env.IMAGE_TAG }}
+          else
+            echo "⚠️ No Dockerfile found. Using az acr build..."
+            az acr build --registry ${{ secrets.ACR_NAME }} --image ${{ env.SERVICE_NAME }}:${{ env.IMAGE_TAG }} --source .
+          fi
+
+      - name: Deploy to Azure Container Apps
+        run: |
+          az containerapp up \
+            --name ${{ env.SERVICE_NAME }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --environment ${{ env.ACA_ENV }} \
+            --image ${{ secrets.ACR_NAME }}/${{ env.SERVICE_NAME }}:${{ env.IMAGE_TAG }} \
+            --location ${{ env.LOCATION }} \
+            --target-port 8080 \
+            --ingress external
