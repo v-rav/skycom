@@ -29,16 +29,18 @@ jobs:
       - name: Log in to ACR
         run: az acr login --name ${{ secrets.ACR_NAME }}
 
-      - name: Build and Push Docker Image
+      - name: Build and Push Image to ACR
         run: |
           if [[ -f "./Dockerfile" ]]; then
-            echo "✅ Dockerfile found. Using docker build..."
-            docker build -t ${{ secrets.ACR_NAME }}/${{ env.SERVICE_NAME }}:${{ env.IMAGE_TAG }} .
-            docker push ${{ secrets.ACR_NAME }}/${{ env.SERVICE_NAME }}:${{ env.IMAGE_TAG }}
+            echo "Dockerfile found. Building with Docker..."
+            docker build -t ${{ secrets.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }} .
+            docker push ${{ secrets.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }}
           else
             echo "⚠️ No Dockerfile found. Using az acr build..."
-            az acr build --registry ${{ secrets.ACR_NAME }} --image ${{ env.SERVICE_NAME }}:${{ env.IMAGE_TAG }} --source .
+            az acr build --registry ${{ secrets.ACR_NAME }} --image ${{ env.IMAGE_NAME }}:${{ github.sha }} .
           fi
+  
+
 
       - name: Deploy to Azure Container Apps
         run: |
