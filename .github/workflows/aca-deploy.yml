@@ -12,6 +12,7 @@ env:
   ACA_ENV: acaenvdev-rav
   LOCATION: eastus
   IMAGE_TAG: latest
+  IMAGE_NAME: my-service
 
 jobs:
   build-and-deploy:
